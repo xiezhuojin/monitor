@@ -3,15 +3,10 @@ export interface Position {
     lat: number
 }
 
-export enum WorkStatus {
-    Functional,
-    Malfunction,
-}
-
 export interface Device {
     id: string,
     position: Position,
-    workStatus: WorkStatus,
+    functional: boolean,
 }
 
 export interface Horn extends Device {}

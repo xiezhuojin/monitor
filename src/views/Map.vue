@@ -7,9 +7,9 @@ import type { PropType } from "vue"
 import "@amap/amap-jsapi-types";
 import AMapLoader from "@amap/amap-jsapi-loader"
 import { shallowRef } from "@vue/reactivity"
+import type { ShallowRef } from "@vue/reactivity"
 
 import type { Position, Horn, Camera, Radar } from "@/interface"
-import { WorkStatus } from "@/interface"
 
 import hornUp from "@/assets/icons/horn/up.png"
 import hornDown from "@/assets/icons/horn/down.png"
@@ -19,20 +19,6 @@ import radarUp from "@/assets/icons/radar/up.png"
 import radarDown from "@/assets/icons/radar/down.png"
 
 export default {
-    setup() {
-        const map: any = shallowRef(null);
-        // let hornGroup = new AMap.OverlayGroup();
-        // let cameraGroup = new AMap.OverlayGroup();
-        // let radarGroup = new AMap.OverlayGroup();
-
-        return {
-            map,
-            // hornGroup,
-            // cameraGroup,
-            // radarGroup,
-        }
-    },
-
     props: {
         apiKey: {
             type: String,
@@ -55,15 +41,15 @@ export default {
 
         show_horns: {
             type: Boolean,
-            required: true,
+            default: true,
         },
         show_cameras: {
             type: Boolean,
-            required: true,
+            default: true,
         },
         show_radars: {
             type: Boolean,
-            required: true,
+            default: true,
         },
         horns: {
             type: Array<Horn>,
@@ -74,6 +60,22 @@ export default {
         radars: {
             type: Array<Radar>,
         },
+    },
+
+    setup() {
+        let map: AMap.Map | ShallowRef<null> = shallowRef(null);
+
+        let hornGroup: AMap.OverlayGroup | null = null
+        let cameraGroup: AMap.OverlayGroup | null = null
+        let radarGroup: AMap.OverlayGroup | null = null
+
+        return {
+            map,
+
+            hornGroup,
+            cameraGroup,
+            radarGroup,
+        }
     },
 
     watch: {
@@ -99,15 +101,15 @@ export default {
         show_radars(new_show, old_show) {
             this.updateShowRadars(new_show);
         },
-        // horns(newHorns, oldHorns) {
-        //     this.updateHorns(newHorns);
-        // },
-        // cameras(newCameras, oldCamera) {
-        //     this.updateCameras(newCameras);
-        // },
-        // radars(newRadars, oldRadars) {
-        //     this.updateRadars(newRadars);
-        // }
+        horns(newHorns, oldHorns) {
+            this.updateHorns(newHorns);
+        },
+        cameras(newCameras, oldCamera) {
+            this.updateCameras(newCameras);
+        },
+        radars(newRadars, oldRadars) {
+            this.updateRadars(newRadars);
+        }
     },
 
     methods: {
@@ -121,6 +123,10 @@ export default {
                     viewMode: "3D",
                     showLabel: false,
                 });
+                this.hornGroup = new AMap.OverlayGroup();
+                this.cameraGroup = new AMap.OverlayGroup();
+                this.radarGroup = new AMap.OverlayGroup();
+
                 this.map.addControl(new AMap.ControlBar({
                     position: {
                         right: "10px",
@@ -132,6 +138,7 @@ export default {
                 this.map.add(this.radarGroup);
             }).catch(e => {
                 console.log(e);
+                throw e;
             })
         },
 
@@ -176,7 +183,7 @@ export default {
             }
             let overlays = this.hornGroup.getOverlays();
             for (let [horn, marker] of Array.from(horns, (horn, i) => [horn, overlays[i]])) {
-                let image = horn.workStatus == WorkStatus.Functional? hornUp: hornDown;
+                let image = horn.functional? hornUp: hornDown;
                 marker.setPosition([horn.position.lng, horn.position.lat]);
                 marker.setIcon(new AMap.Icon({image}));
             }
@@ -189,7 +196,7 @@ export default {
             }
             let overlays = this.cameraGroup.getOverlays();
             for (let [camera, marker] of Array.from(cameras, (horn, i) => [horn, overlays[i]])) {
-                let image = camera.workStatus == WorkStatus.Functional? cameraUp: cameraDown;
+                let image = camera.functional? cameraUp: cameraDown;
                 marker.setPosition([camera.position.lng, camera.position.lat]);
                 marker.setIcon(new AMap.Icon({image}));
             }
@@ -201,7 +208,7 @@ export default {
             }
             let overlays = this.radarGroup.getOverlays();
             for (let [radar, marker] of Array.from(radars, (horn, i) => [horn, overlays[i]])) {
-                let image = radar.workStatus == WorkStatus.Functional? radarUp: radarDown;
+                let image = radar.functional? radarUp: radarDown;
                 marker.setPosition([radar.position.lng, radar.position.lat]);
                 marker.setIcon(new AMap.Icon({image}));
             }
