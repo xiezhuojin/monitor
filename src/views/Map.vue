@@ -3,7 +3,6 @@
 </template>
 
 <script lang="ts">
-import type { PropType } from "vue"
 import "@amap/amap-jsapi-types";
 import AMapLoader from "@amap/amap-jsapi-loader"
 import { shallowRef } from "@vue/reactivity"
@@ -17,6 +16,7 @@ import cameraUp from "@/assets/icons/camera/up.png"
 import cameraDown from "@/assets/icons/camera/down.png"
 import radarUp from "@/assets/icons/radar/up.png"
 import radarDown from "@/assets/icons/radar/down.png"
+import { assert } from "@vue/compiler-core";
 
 export default {
     props: {
@@ -24,91 +24,21 @@ export default {
             type: String,
             required: true,
         },
-        zoom: {
-            type: Number,
-            required: true,
-        },
-        center: {
-            type: Object as PropType<Position>,
-            required: true,
-        },
-        pitch: {
-            type: Number,
-        },
-        limitBounds: {
-            type: Array<Position>,
-        },
-
-        show_horns: {
-            type: Boolean,
-            default: true,
-        },
-        show_cameras: {
-            type: Boolean,
-            default: true,
-        },
-        show_radars: {
-            type: Boolean,
-            default: true,
-        },
-        horns: {
-            type: Array<Horn>,
-        },
-        cameras: {
-            type: Array<Camera>,
-        },
-        radars: {
-            type: Array<Radar>,
-        },
     },
 
     setup() {
         let map: AMap.Map | ShallowRef<null> = shallowRef(null);
 
-        let hornGroup: AMap.OverlayGroup | null = null
-        let cameraGroup: AMap.OverlayGroup | null = null
-        let radarGroup: AMap.OverlayGroup | null = null
+        let horns: Map<string, AMap.Marker> = new Map();
+        let cameras: Map<string, AMap.Marker> = new Map();
+        let radars: Map<string, AMap.Marker> = new Map();
 
         return {
             map,
 
-            hornGroup,
-            cameraGroup,
-            radarGroup,
-        }
-    },
-
-    watch: {
-        zoom(newZoom, oldZoom) {
-            this.updateZoom(newZoom);
-        },
-        center(newCenter, oldCenter) {
-            this.updateCenter(newCenter);
-        },
-        pitch(newPitch, oldPitch) {
-            this.updatePitch(newPitch);
-        },
-        limitBounds(newLimitBounds, oldLimitBounds) {
-            this.updateLimitBounds(newLimitBounds);
-        },
-
-        show_horns(new_show, old_show) {
-            this.updateShowHorns(new_show);
-        },
-        show_cameras(new_show, old_show) {
-            this.updateShowCameras(new_show);
-        },
-        show_radars(new_show, old_show) {
-            this.updateShowRadars(new_show);
-        },
-        horns(newHorns, oldHorns) {
-            this.updateHorns(newHorns);
-        },
-        cameras(newCameras, oldCamera) {
-            this.updateCameras(newCameras);
-        },
-        radars(newRadars, oldRadars) {
-            this.updateRadars(newRadars);
+            horns,
+            cameras,
+            radars,
         }
     },
 
@@ -123,99 +53,131 @@ export default {
                     viewMode: "3D",
                     showLabel: false,
                 });
-                this.hornGroup = new AMap.OverlayGroup();
-                this.cameraGroup = new AMap.OverlayGroup();
-                this.radarGroup = new AMap.OverlayGroup();
-
-                this.map.addControl(new AMap.ControlBar({
+                (this.map as any).addControl(new AMap.ControlBar({
                     position: {
                         right: "10px",
                         bottom: "10px"
                     }
                 }))
-                this.map.add(this.hornGroup);
-                this.map.add(this.cameraGroup);
-                this.map.add(this.radarGroup);
             }).catch(e => {
                 console.log(e);
                 throw e;
             })
         },
 
-        updateCenter(center: Position) {
-            this.map.setCenter([center.lng, center.lat]);
+        setCenter(center: AMap.LngLat) {
+            assert(this.map != null);
+            ((this.map as any) as AMap.Map).setCenter(center);
         },
-        updateZoom(zoom: Number) {
-            this.map.setZoom(zoom);
+        setZoom(zoom: number) {
+            assert(this.map != null);
+            ((this.map as any) as AMap.Map).setZoom(zoom);
         },
-        updatePitch(pitch: Number) {
-            this.map.setPitch(pitch);
+        setZooms(zooms: [number, number]) {
+            assert(this.map != null);
+            ((this.map as any) as AMap.Map).setZooms(zooms);
         },
-        updateLimitBounds(LimitBounds: Array<Position>) {
-            this.map.setLimitBounds(LimitBounds);
+        setPitch(pitch: number) {
+            assert(this.map != null);
+            ((this.map as any) as AMap.Map).setPitch(pitch);
+        },
+        updateLimitBounds(LimitBounds: AMap.Bounds) {
+            assert(this.map != null);
+            ((this.map as any) as AMap.Map).setLimitBounds(LimitBounds);
         },
 
-        updateShowHorns(show: Boolean) {
-            if (show) {
-                this.map.show(this.hornGroup);
-            } else {
-                this.map.hide(this.hornGroup);
+        addHornMarker(horn: Horn) {
+            assert(this.map != null);
+            if (horn.id in this.horns.keys()) {
+                return;
             }
+            let icon = horn.functional? hornUp: hornDown;
+            let marker = new AMap.Marker({
+                position: horn.position,
+                icon,
+            });
+            ((this.map as any) as AMap.Map).add(marker);
+            this.horns.set(horn.id, marker);
         },
-        updateShowCameras(show: Boolean) {
-            if (show) {
-                this.map.show(this.cameraGroup);
-            } else {
-                this.map.hide(this.cameraGroup);
-            }
+        updateHornMarker(horn: Horn) {
+            assert(this.map != null);
+            let marker = this.horns.get(horn.id);
+            marker?.setPosition([horn.position.lng, horn.position.lat]);
+            let icon = horn.functional? hornUp: hornDown;
+            marker?.setIcon(icon);
         },
-        updateShowRadars(show: Boolean) {
-            if (show) {
-                this.map.show(this.radarGroup);
-            } else {
-                this.map.hide(this.radarGroup);
+        
+        addCameraMarker(camera: Camera) {
+            assert(this.map != null);
+            if (camera.id in this.cameras.keys()) {
+                return;
             }
+            let icon = camera.functional? cameraUp: cameraDown;
+            let marker = new AMap.Marker({
+                position: camera.position,
+                icon,
+            });
+            ((this.map as any) as AMap.Map).add(marker);
+            this.cameras.set(camera.id, marker);
         },
-        updateHorns(horns: Array<Horn>) {
-            let overlayToAdd = horns.length - this.hornGroup.getOverlays().length;
-            for (let i = 0; i < overlayToAdd; ++i) {
-                this.hornGroup.addOverlay(new AMap.Marker());
-            }
-            let overlays = this.hornGroup.getOverlays();
-            for (let [horn, marker] of Array.from(horns, (horn, i) => [horn, overlays[i]])) {
-                let image = horn.functional? hornUp: hornDown;
-                marker.setPosition([horn.position.lng, horn.position.lat]);
-                marker.setIcon(new AMap.Icon({image}));
-            }
-            
+        updateCameraMarker(camera: Camera) {
+            assert(this.map != null);
+            let marker = this.cameras.get(camera.id);
+            marker?.setPosition([camera.position.lng, camera.position.lat]);
+            let icon = camera.functional? cameraUp: cameraDown;
+            marker?.setIcon(icon);
         },
-        updateCameras(cameras: Array<Camera>) {
-            let overlayToAdd = cameras.length - this.cameraGroup.getOverlays().length;
-            for (let i = 0; i < overlayToAdd; ++i) {
-                this.cameraGroup.addOverlay(new AMap.Marker());
+
+        addRadarMarker(radar: Radar) {
+            assert(this.map != null);
+            if (radar.id in this.radars.keys()) {
+                return;
             }
-            let overlays = this.cameraGroup.getOverlays();
-            for (let [camera, marker] of Array.from(cameras, (horn, i) => [horn, overlays[i]])) {
-                let image = camera.functional? cameraUp: cameraDown;
-                marker.setPosition([camera.position.lng, camera.position.lat]);
-                marker.setIcon(new AMap.Icon({image}));
-            }
+            let icon = radar.functional? radarUp: radarDown;
+            let marker = new AMap.Marker({
+                position: radar.position,
+                icon,
+            });
+            ((this.map as any) as AMap.Map).add(marker);
+            this.radars.set(radar.id, marker);
         },
-        updateRadars(radars: Array<Radar>) {
-            let overlayToAdd = radars.length - this.radarGroup.getOverlays().length;
-            for (let i = 0; i < overlayToAdd; ++i) {
-                this.radarGroup.addOverlay(new AMap.Marker());
-            }
-            let overlays = this.radarGroup.getOverlays();
-            for (let [radar, marker] of Array.from(radars, (horn, i) => [horn, overlays[i]])) {
-                let image = radar.functional? radarUp: radarDown;
-                marker.setPosition([radar.position.lng, radar.position.lat]);
-                marker.setIcon(new AMap.Icon({image}));
-            }
+        updateRadarMarker(radar: Radar) {
+            assert(this.map != null);
+            let marker = this.horns.get(radar.id);
+            marker?.setPosition([radar.position.lng, radar.position.lat]);
+            let icon = radar.functional? radarUp: radarDown;
+            marker?.setIcon(icon);
         },
+
+        showHorns() {
+            assert(this.map != null);
+            this.horns.forEach((m) => m.show());
+        },
+        hideHorns() {
+            assert(this.map != null);
+            this.horns.forEach((m) => m.hide());
+        },
+        showCameras() {
+            assert(this.map != null);
+            this.cameras.forEach((m) => m.show());
+        },
+        hideCameras() {
+            assert(this.map != null);
+            this.cameras.forEach((m) => m.hide());
+        },
+        showRadars() {
+            assert(this.map != null);
+            this.radars.forEach((m) => m.show());
+        },
+        hideRadars() {
+            assert(this.map != null);
+            this.radars.forEach((m) => m.hide());
+        },
+
     },
 
     mounted() {
+        (window as any)["map"] = this;
         this.init();
     }
 }
