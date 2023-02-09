@@ -8,7 +8,7 @@ import AMapLoader from "@amap/amap-jsapi-loader"
 import { shallowRef } from "@vue/reactivity"
 import type { ShallowRef } from "@vue/reactivity"
 
-import type { Position, Horn, Camera, Radar } from "@/interface"
+import type { Horn, Camera, Radar, TrackPoint } from "@/interface"
 
 import hornUp from "@/assets/icons/horn/up.png"
 import hornDown from "@/assets/icons/horn/down.png"
@@ -33,17 +33,26 @@ export default {
         let cameras: Map<string, AMap.Marker> = new Map();
         let radars: Map<string, AMap.Marker> = new Map();
 
+        let tracksLayer: AMap.Object3DLayer | null = null;
+        let trackHeads: AMap.Object3D.Points | null = null;
+        let trackLines: Map<number, [AMap.Object3D.MeshLine, TrackPoint[]]> = new Map();
+
         return {
             map,
 
             horns,
             cameras,
             radars,
+
+            tracksLayer,
+            trackHeads,
+            trackLines,
+            trackClearIntervalID: 0,
         }
     },
 
     methods: {
-        init() {
+        initMap() {
             AMapLoader.load({
                 key: this.apiKey,
                 version: "2.0",
@@ -59,6 +68,9 @@ export default {
                         bottom: "10px"
                     }
                 }))
+                this.tracksLayer = new AMap.Object3DLayer();
+                this.trackHeads = new AMap.Object3D.Points();
+                ((this.map as any) as AMap.Map).add(this.tracksLayer);
             }).catch(e => {
                 console.log(e);
                 throw e;
@@ -91,7 +103,7 @@ export default {
             if (horn.id in this.horns.keys()) {
                 return;
             }
-            let icon = horn.functional? hornUp: hornDown;
+            let icon = horn.functional ? hornUp : hornDown;
             let marker = new AMap.Marker({
                 position: horn.position,
                 icon,
@@ -103,16 +115,16 @@ export default {
             assert(this.map != null);
             let marker = this.horns.get(horn.id);
             marker?.setPosition([horn.position.lng, horn.position.lat]);
-            let icon = horn.functional? hornUp: hornDown;
+            let icon = horn.functional ? hornUp : hornDown;
             marker?.setIcon(icon);
         },
-        
+
         addCameraMarker(camera: Camera) {
             assert(this.map != null);
             if (camera.id in this.cameras.keys()) {
                 return;
             }
-            let icon = camera.functional? cameraUp: cameraDown;
+            let icon = camera.functional ? cameraUp : cameraDown;
             let marker = new AMap.Marker({
                 position: camera.position,
                 icon,
@@ -124,7 +136,7 @@ export default {
             assert(this.map != null);
             let marker = this.cameras.get(camera.id);
             marker?.setPosition([camera.position.lng, camera.position.lat]);
-            let icon = camera.functional? cameraUp: cameraDown;
+            let icon = camera.functional ? cameraUp : cameraDown;
             marker?.setIcon(icon);
         },
 
@@ -133,7 +145,7 @@ export default {
             if (radar.id in this.radars.keys()) {
                 return;
             }
-            let icon = radar.functional? radarUp: radarDown;
+            let icon = radar.functional ? radarUp : radarDown;
             let marker = new AMap.Marker({
                 position: radar.position,
                 icon,
@@ -145,7 +157,7 @@ export default {
             assert(this.map != null);
             let marker = this.horns.get(radar.id);
             marker?.setPosition([radar.position.lng, radar.position.lat]);
-            let icon = radar.functional? radarUp: radarDown;
+            let icon = radar.functional ? radarUp : radarDown;
             marker?.setIcon(icon);
         },
 
@@ -174,12 +186,62 @@ export default {
             this.radars.forEach((m) => m.hide());
         },
 
+        updateTracks(trackPoints: TrackPoint[]) {
+            assert(this.map != null);
+            trackPoints.forEach((tp) => {
+                if (!(tp.id in this.trackLines.keys())) {
+                    let line = new AMap.Object3D.MeshLine();
+                    this.trackLines.set(tp.id, [line, []]);
+                    this.tracksLayer.add(line);
+                }
+                this.trackLines.get(tp.id)?.[1].push(tp);
+                let item = this.trackLines.get(tp.id);
+                let path = item?.[1].map((tp) => tp.position);
+                let height = item?.[1].map((tp) => tp.altitude)
+                item?.[0].setPath(path);
+                item?.[0].setHeight(height);
+            })
+            let vertices = Array.from(this.trackLines.values())
+                .map((items) => {
+                    if (items[1].length == 0) {
+                        return null;
+                    }
+                    let tp = items[1].slice(-1)[0];
+                    return [tp.position.lng, tp.position.lat, tp.altitude];
+                })
+                .filter((item) => item == null);
+            this.trackHeads.vertices = vertices;
+            this.tracksLayer.reDraw()
+        },
+        clearObsoletedTrack(timeout: number) {
+            let now = new Date().getTime();
+            this.trackLines.forEach((items) => {
+                items[1] = items[1].filter((tp) => now - tp.trackAt <= timeout);
+            })
+            this.trackLines = new Map(Array.from(this.trackLines)
+                .filter(([key, value]) => value[1].length > 0)
+                .map(([k, v]) => [k, v]));
+            this.updateTracks([]);
+        },
+        setTrackClearInterval(timeout: number) {
+            if (this.trackClearIntervalID != 0) {
+                clearInterval(this.trackClearIntervalID);
+            }
+            this.trackClearIntervalID = setInterval(this.clearObsoletedTrack, timeout);
+        },
     },
 
     mounted() {
         (window as any)["map"] = this;
-        this.init();
-    }
+        this.initMap();
+    },
+
+    unmounted() {
+        if (this.trackClearIntervalID != 0) {
+            clearInterval(this.trackClearIntervalID);
+        }
+    },
+
 }
 </script>
 
