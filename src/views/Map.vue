@@ -16,7 +16,6 @@ import cameraUp from "@/assets/icons/camera/up.png"
 import cameraDown from "@/assets/icons/camera/down.png"
 import radarUp from "@/assets/icons/radar/up.png"
 import radarDown from "@/assets/icons/radar/down.png"
-import { assert } from "@vue/compiler-core";
 
 export default {
     props: {
@@ -55,18 +54,20 @@ export default {
         initMap() {
             AMapLoader.load({
                 key: this.apiKey,
-                version: "2.0",
-                plugins: ["AMap.ControlBar"]
+                version: "1.4.15",
+                plugins: ["AMap.ControlBar", "Map3D"],
             }).then((AMap) => {
                 this.map = new AMap.Map("container", {
                     viewMode: "3D",
                     showLabel: false,
+                    features: ["bg"],
                 });
                 (this.map as any).addControl(new AMap.ControlBar({
+                    showZoomBar: false,
                     position: {
                         right: "10px",
-                        bottom: "10px"
-                    }
+                        bottom: "-80px",
+                    },
                 }))
                 this.tracksLayer = new AMap.Object3DLayer();
                 this.trackHeads = new AMap.Object3D.Points();
@@ -77,29 +78,27 @@ export default {
             })
         },
 
+        isReady(): boolean {
+            return typeof AMap == "object";
+        },
+
         setCenter(center: AMap.LngLat) {
-            assert(this.map != null);
             ((this.map as any) as AMap.Map).setCenter(center);
         },
         setZoom(zoom: number) {
-            assert(this.map != null);
             ((this.map as any) as AMap.Map).setZoom(zoom);
         },
         setZooms(zooms: [number, number]) {
-            assert(this.map != null);
             ((this.map as any) as AMap.Map).setZooms(zooms);
         },
         setPitch(pitch: number) {
-            assert(this.map != null);
             ((this.map as any) as AMap.Map).setPitch(pitch);
         },
-        updateLimitBounds(LimitBounds: AMap.Bounds) {
-            assert(this.map != null);
+        setLimitBounds(LimitBounds: AMap.Bounds) {
             ((this.map as any) as AMap.Map).setLimitBounds(LimitBounds);
         },
 
         addHornMarker(horn: Horn) {
-            assert(this.map != null);
             if (horn.id in this.horns.keys()) {
                 return;
             }
@@ -112,7 +111,6 @@ export default {
             this.horns.set(horn.id, marker);
         },
         updateHornMarker(horn: Horn) {
-            assert(this.map != null);
             let marker = this.horns.get(horn.id);
             marker?.setPosition([horn.position.lng, horn.position.lat]);
             let icon = horn.functional ? hornUp : hornDown;
@@ -120,7 +118,6 @@ export default {
         },
 
         addCameraMarker(camera: Camera) {
-            assert(this.map != null);
             if (camera.id in this.cameras.keys()) {
                 return;
             }
@@ -133,7 +130,6 @@ export default {
             this.cameras.set(camera.id, marker);
         },
         updateCameraMarker(camera: Camera) {
-            assert(this.map != null);
             let marker = this.cameras.get(camera.id);
             marker?.setPosition([camera.position.lng, camera.position.lat]);
             let icon = camera.functional ? cameraUp : cameraDown;
@@ -141,7 +137,6 @@ export default {
         },
 
         addRadarMarker(radar: Radar) {
-            assert(this.map != null);
             if (radar.id in this.radars.keys()) {
                 return;
             }
@@ -154,40 +149,32 @@ export default {
             this.radars.set(radar.id, marker);
         },
         updateRadarMarker(radar: Radar) {
-            assert(this.map != null);
             let marker = this.horns.get(radar.id);
             marker?.setPosition([radar.position.lng, radar.position.lat]);
             let icon = radar.functional ? radarUp : radarDown;
             marker?.setIcon(icon);
         },
 
-        showHorns() {
-            assert(this.map != null);
+        showHornMarkers() {
             this.horns.forEach((m) => m.show());
         },
-        hideHorns() {
-            assert(this.map != null);
+        hideHornMarkers() {
             this.horns.forEach((m) => m.hide());
         },
-        showCameras() {
-            assert(this.map != null);
+        showCameraMarkers() {
             this.cameras.forEach((m) => m.show());
         },
-        hideCameras() {
-            assert(this.map != null);
+        hideCameraMarkers() {
             this.cameras.forEach((m) => m.hide());
         },
-        showRadars() {
-            assert(this.map != null);
+        showRadarMarkers() {
             this.radars.forEach((m) => m.show());
         },
-        hideRadars() {
-            assert(this.map != null);
+        hideRadarMarkers() {
             this.radars.forEach((m) => m.hide());
         },
 
         updateTracks(trackPoints: TrackPoint[]) {
-            assert(this.map != null);
             trackPoints.forEach((tp) => {
                 if (!(tp.id in this.trackLines.keys())) {
                     let line = new AMap.Object3D.MeshLine();
@@ -232,7 +219,6 @@ export default {
     },
 
     mounted() {
-        (window as any)["map"] = this;
         this.initMap();
     },
 

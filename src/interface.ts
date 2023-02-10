@@ -1,10 +1,5 @@
 import "@amap/amap-jsapi-types";
 
-export interface Position {
-    lng: number
-    lat: number
-}
-
 export interface Device {
     id: string,
     position: AMap.LngLat,
