@@ -48,7 +48,7 @@ async def hello(websocket):
     await asyncio.sleep(0.5)
 
     set_track_clear_interval = json.dumps(
-        ["map", "setTrackClearInterval", "parameters = 5"]
+        ["map", "setTrackClearInterval", "parameters = 10000"]
     )
     await websocket.send(set_track_clear_interval)
     await asyncio.sleep(0.5)
