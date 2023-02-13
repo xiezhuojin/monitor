@@ -56,7 +56,6 @@ export default {
                 plugins: ["AMap.ControlBar", "Map3D"],
             }).then((AMap) => {
                 this.tracksLayer = new AMap.Object3DLayer();
-                this.tracksLayer2 = new AMap.Object3DLayer();
                 this.map = new AMap.Map("container", {
                     viewMode: "3D",
                     showLabel: false,
@@ -64,7 +63,6 @@ export default {
                         new AMap.TileLayer.Satellite(),
                         new AMap.Buildings(),
                         this.tracksLayer,
-                        this.tracksLayer2,
                     ]
                 });
                 (this.map as any).addControl(new AMap.ControlBar({
