@@ -33,7 +33,7 @@ export default {
         let radars: Map<string, AMap.Marker> = new Map();
 
         let tracksLayer: AMap.Object3DLayer | null = null;
-        let trackLines: Map<number, TrackPoint[]> = new Map();
+        let trackLines: Map<number, [AMap.Object3D.RoundPoints, Map<number, AMap.Object3D.Line>]> = new Map();
 
         return {
             map,
@@ -175,42 +175,71 @@ export default {
         },
 
         updateTracks(trackPoints: TrackPoint[]) {
-            trackPoints.forEach((tp) => {
-                if (!(this.trackLines.has(tp.id))) {
-                    this.trackLines.set(tp.id, []);
+            trackPoints.forEach((trackPoint) => {
+                let coord = (this.map as any).lngLatToGeodeticCoord(trackPoint.position);
+                if (!(this.trackLines.has(trackPoint.id))) {
+                    let head = new AMap.Object3D.RoundPoints();
+                    head.geometry.vertexColors.push(1, 0, 0, 0.6);
+                    head.geometry.pointSizes.push(5);
+                    head.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
+                    this.tracksLayer.add(head);
+                    let line = new AMap.Object3D.Line();
+                    line.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
+                    line.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
+                    line.geometry.vertexColors.push(1, 0, 0, 0.6);
+                    line.geometry.vertexColors.push(1, 0, 0, 0.6);
+                    this.tracksLayer.add(line);
+                    let lines = new Map();
+                    lines.set(trackPoint.trackAt * 1000, line);
+                    this.trackLines.set(trackPoint.id, [head, lines]);
+                } else {
+                    let item = this.trackLines.get(trackPoint.id);
+                    let head = item?.[0];
+                    head.geometry.vertices.length = 0;
+                    head.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
+                    head.needUpdate = true;
+                    head.reDraw();
+                    let lines = item?.[1];
+                    let trackAts = Array.from(lines.keys());
+                    let lastLine = lines?.get(trackAts[trackAts.length - 1]);
+                    let lastLineX = lastLine.geometry.vertices[lastLine.geometry.vertices.length - 3];
+                    let lastLineY = lastLine.geometry.vertices[lastLine.geometry.vertices.length - 2];
+                    let lastLineZ = lastLine.geometry.vertices[lastLine.geometry.vertices.length - 1];
+                    let line = new AMap.Object3D.Line();
+                    line.geometry.vertexColors.push(1, 0, 0, 0.6);
+                    line.geometry.vertices.push(lastLineX, lastLineY, lastLineZ);
+                    line.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
+                    line.geometry.vertexColors.push(1, 0, 0, 0.6);
+                    line.geometry.vertexColors.push(1, 0, 0, 0.6);
+                    this.tracksLayer.add(line);
+                    lines?.set(trackPoint.trackAt * 1000, line);
                 }
-                this.trackLines.get(tp.id)?.push(tp);
-            })
-            this.tracksLayer.clear();
-            this.trackLines.forEach((trackPoints) => {
-                let head = new AMap.Object3D.RoundPoints();
-                let lastTrackPoint = trackPoints[trackPoints.length - 1];
-                let center = (this.map as any).lngLatToGeodeticCoord(lastTrackPoint.position);
-                head.geometry.vertices.push(center.x, center.y, lastTrackPoint.altitude);
-                head.geometry.pointSizes.push(5);
-                head.geometry.vertexColors.push(1, 0, 0, 0.5);
-                this.tracksLayer.add(head);
-                let line = new AMap.Object3D.MeshLine({
-                    path: trackPoints.map((trackPoint) => trackPoint.position),
-                    height: trackPoints.map((trackPoint) => trackPoint.altitude),
-                    width: 1,
-                    color: "#ffff00",
-                })
-                this.tracksLayer.add(line);
             })
         },
         clearObsoletedTrack(timeout: number) {
-            let newTrackLines = new Map();
+            let trackLinesToDeleteIDs = [];
             let now = new Date().getTime();
-            this.trackLines.forEach((trackPoints, _) => {
-                let filterTrackPoints = trackPoints.filter((trackPoint) => {
-                    return now - trackPoint.trackAt * 1000 <= timeout;
-                })
-                if (filterTrackPoints.length > 0) {
-                    newTrackLines.set(_, filterTrackPoints);
+            for (let [id, [_, lines]] of this.trackLines) {
+                let lineToDeleteIDs = [];
+                for (let [trackAt, _] of lines) {
+                    console.log(now, trackAt);
+                    if (now - trackAt > timeout) {
+                        lineToDeleteIDs.push(trackAt);
+                    }
                 }
-            });
-            this.trackLines = newTrackLines;
+                for (let lineToDeleteID of lineToDeleteIDs) {
+                    this.tracksLayer.remove(lines.get(lineToDeleteID));
+                    lines.delete(lineToDeleteID);
+                }
+                if (lines.size == 0) {
+                    trackLinesToDeleteIDs.push(id);
+                }
+            }
+            for (let trackLinesToDeleteID of trackLinesToDeleteIDs) {
+                let head = this.trackLines.get(trackLinesToDeleteID)?.[0];
+                this.tracksLayer.remove(head);
+                this.trackLines.delete(trackLinesToDeleteID);
+            }
             this.updateTracks([]);
         },
         setTrackClearInterval(timeout: number) {
