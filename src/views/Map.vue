@@ -8,7 +8,7 @@ import AMapLoader from "@amap/amap-jsapi-loader"
 import { shallowRef } from "@vue/reactivity"
 import type { ShallowRef } from "@vue/reactivity"
 
-import type { Horn, Camera, Radar, TrackPoint } from "@/interface"
+import type { Device, TrackPoint } from "@/interface"
 
 import hornUp from "@/assets/icons/horn/up.png"
 import hornDown from "@/assets/icons/horn/down.png"
@@ -28,9 +28,7 @@ export default {
     setup() {
         let map: AMap.Map | ShallowRef<null> = shallowRef(null);
 
-        let horns: Map<string, AMap.Marker> = new Map();
-        let cameras: Map<string, AMap.Marker> = new Map();
-        let radars: Map<string, AMap.Marker> = new Map();
+        let devices: Map<DeviceType, Map<string, AMap.Marker>> = new Map();
 
         let tracksLayer: AMap.Object3DLayer | null = null;
         let trackLines: Map<number, [TrackPoint[], AMap.Object3D.RoundPoints, AMap.Object3D.MeshLine]> = new Map();
@@ -38,9 +36,7 @@ export default {
         return {
             map,
 
-            horns,
-            cameras,
-            radars,
+            devices,
 
             tracksLayer,
             trackLines,
@@ -98,80 +94,72 @@ export default {
             ((this.map as any) as AMap.Map).setLimitBounds(LimitBounds);
         },
 
-        addHornMarker(horn: Horn) {
-            if (horn.id in this.horns.keys()) {
-                return;
+        getDeviceMarkerIcon(device: Device): string | undefined {
+            switch (device.type) {
+                case "horn":
+                    return device.functional? hornUp: hornDown;
+                case "camera":
+                    return device.functional? cameraUp: cameraDown;
+                case "radar":
+                    return device.functional? radarUp: radarDown;
             }
-            let icon = horn.functional ? hornUp : hornDown;
-            let marker = new AMap.Marker({
-                position: horn.position,
-                icon,
-            });
-            ((this.map as any) as AMap.Map).add(marker);
-            this.horns.set(horn.id, marker);
         },
-        updateHornMarker(horn: Horn) {
-            let marker = this.horns.get(horn.id);
-            marker?.setPosition([horn.position.lng, horn.position.lat]);
-            let icon = horn.functional ? hornUp : hornDown;
-            marker?.setIcon(icon);
+        getDeviceMarkerLabelContent(device: Device): string {
+            return device.name;
         },
 
-        addCameraMarker(camera: Camera) {
-            if (camera.id in this.cameras.keys()) {
+        addDevice(device: Device) {
+            if (!(device.type in this.devices)) {
+                this.devices.set(device.type, new Map());
+            }
+            if (device.id in (this.devices.get(device.type) as any).keys()) {
                 return;
             }
-            let icon = camera.functional ? cameraUp : cameraDown;
+            let icon = this.getDeviceMarkerIcon(device);
+            let labelContent = this.getDeviceMarkerLabelContent(device);
             let marker = new AMap.Marker({
-                position: camera.position,
+                position: device.position,
                 icon,
+                label: {
+                    content: labelContent,
+                    direction: "top",
+                    offset: new AMap.Pixel(0,-5),
+                }
             });
             ((this.map as any) as AMap.Map).add(marker);
-            this.cameras.set(camera.id, marker);
+            AMap.event.addListener(marker, "click", () => {
+                console.log("clicked");
+            });
+            this.devices.get(device.type)?.set(device.id, marker);
         },
-        updateCameraMarker(camera: Camera) {
-            let marker = this.cameras.get(camera.id);
-            marker?.setPosition([camera.position.lng, camera.position.lat]);
-            let icon = camera.functional ? cameraUp : cameraDown;
+        updateDevice(device: Device) {
+            let marker = this.devices.get(device.type)?.get(device.id);
+            marker?.setPosition([device.position.lng, device.position.lat]);
+            let icon = this.getDeviceMarkerIcon(device);
+            let labelContent = this.getDeviceMarkerLabelContent(device);
             marker?.setIcon(icon);
+            marker?.setLabel({
+                content: labelContent,
+                direction: "top",
+                offset: new AMap.Pixel(0,-5),
+            })
         },
 
-        addRadarMarker(radar: Radar) {
-            if (radar.id in this.radars.keys()) {
-                return;
+        showDevicesByType(type: string) {
+            let devices = this.devices.get(type);
+            if (devices) {
+                for (let marker of devices.values()) {
+                    marker.show();
+                }
             }
-            let icon = radar.functional ? radarUp : radarDown;
-            let marker = new AMap.Marker({
-                position: radar.position,
-                icon,
-            });
-            ((this.map as any) as AMap.Map).add(marker);
-            this.radars.set(radar.id, marker);
         },
-        updateRadarMarker(radar: Radar) {
-            let marker = this.horns.get(radar.id);
-            marker?.setPosition([radar.position.lng, radar.position.lat]);
-            let icon = radar.functional ? radarUp : radarDown;
-            marker?.setIcon(icon);
-        },
-
-        showHornMarkers() {
-            this.horns.forEach((m) => m.show());
-        },
-        hideHornMarkers() {
-            this.horns.forEach((m) => m.hide());
-        },
-        showCameraMarkers() {
-            this.cameras.forEach((m) => m.show());
-        },
-        hideCameraMarkers() {
-            this.cameras.forEach((m) => m.hide());
-        },
-        showRadarMarkers() {
-            this.radars.forEach((m) => m.show());
-        },
-        hideRadarMarkers() {
-            this.radars.forEach((m) => m.hide());
+        hideDevicesByType(type: string) {
+            let devices = this.devices.get(type);
+            if (devices) {
+                for (let marker of devices.values()) {
+                    marker.hide();
+                }
+            }
         },
 
         updateTracks(trackPoints: TrackPoint[]) {

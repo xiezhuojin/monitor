@@ -29,23 +29,23 @@ async def hello(websocket):
     await websocket.send(set_limit_bounds)
     await asyncio.sleep(0.5)
 
-    add_horn_marker = json.dumps(
-        ["map", "addHornMarker", "parameters = {id: 1, position: new AMap.LngLat(113.306646, 23.383048), functional: true};"]
+    add_horn = json.dumps(
+        ["map", "addDevice", "parameters = {id: 1, name: 'horn1', type: 'horn', position: new AMap.LngLat(113.306646, 23.383048), functional: true};"]
     )
-    await websocket.send(add_horn_marker)
+    await websocket.send(add_horn)
     await asyncio.sleep(0.5)
 
-    update_horn_marker = json.dumps(
-        ["map", "updateHornMarker", "parameters = {id: 1, position: new AMap.LngLat(113.307646, 23.383048), functional: false};"]
+    update_horn = json.dumps(
+        ["map", "updateDevice", "parameters = {id: 1, name: 'horn2', type: 'horn', position: new AMap.LngLat(113.307646, 23.383048), functional: false};"]
     )
-    await websocket.send(update_horn_marker)
+    await websocket.send(update_horn)
     await asyncio.sleep(0.5)
 
-    hide_horn_markers = json.dumps(
-        ["map", "hideHornMarkers", ""]
-    )
-    await websocket.send(hide_horn_markers)
-    await asyncio.sleep(0.5)
+    # hide_horns = json.dumps(
+    #     ["map", "hideDevicesByType", "parameters = 'horn'"]
+    # )
+    # await websocket.send(hide_horns)
+    # await asyncio.sleep(0.5)
 
     set_track_clear_interval = json.dumps(
         ["map", "setTrackClearInterval", "parameters = 5000"]
@@ -54,7 +54,7 @@ async def hello(websocket):
     await asyncio.sleep(1)
 
     while True:
-        tracks = ", ".join([get_track() for i in range(10000)])
+        tracks = ", ".join([get_track() for i in range(10)])
         updateTracks = json.dumps(
             ["map", "updateTracks", f"parameters = [{tracks}]"]
         )
@@ -71,7 +71,7 @@ def get_track():
     lat = random.randrange(int(south * 1_000_000), int(north * 1_000_000)) / 1_000_000
     height = random.randint(100, 300)
     track_at = int(time.time())
-    id = random.randint(1, 1000)
+    id = random.randint(1, 10)
     return "{id: " + str(id) + ", position: new AMap.LngLat" + f"({lng}, {lat}), " + f"altitude: {height}, trackAt: {track_at}" + "}"
 
 start_server = websockets.serve(hello, '0.0.0.0', 9000)
