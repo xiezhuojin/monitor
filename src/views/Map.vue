@@ -9,13 +9,7 @@ import { shallowRef } from "@vue/reactivity"
 import type { ShallowRef } from "@vue/reactivity"
 
 import type { Device, TrackPoint } from "@/interface"
-
-import hornUp from "@/assets/icons/horn/up.png"
-import hornDown from "@/assets/icons/horn/down.png"
-import cameraUp from "@/assets/icons/camera/up.png"
-import cameraDown from "@/assets/icons/camera/down.png"
-import radarUp from "@/assets/icons/radar/up.png"
-import radarDown from "@/assets/icons/radar/down.png"
+import { getDeviceMarkerIcon, getDeviceMarkerLabelContent } from "@/utils/marker"
 
 export default {
     props: {
@@ -28,7 +22,7 @@ export default {
     setup() {
         let map: AMap.Map | ShallowRef<null> = shallowRef(null);
 
-        let devices: Map<DeviceType, Map<string, AMap.Marker>> = new Map();
+        let devices: Map<string, Map<string, AMap.Marker>> = new Map();
 
         let tracksLayer: AMap.Object3DLayer | null = null;
         let trackLines: Map<number, [TrackPoint[], AMap.Object3D.RoundPoints, AMap.Object3D.MeshLine]> = new Map();
@@ -94,20 +88,6 @@ export default {
             ((this.map as any) as AMap.Map).setLimitBounds(LimitBounds);
         },
 
-        getDeviceMarkerIcon(device: Device): string | undefined {
-            switch (device.type) {
-                case "horn":
-                    return device.functional? hornUp: hornDown;
-                case "camera":
-                    return device.functional? cameraUp: cameraDown;
-                case "radar":
-                    return device.functional? radarUp: radarDown;
-            }
-        },
-        getDeviceMarkerLabelContent(device: Device): string {
-            return device.name;
-        },
-
         addDevice(device: Device) {
             if (!(device.type in this.devices)) {
                 this.devices.set(device.type, new Map());
@@ -115,8 +95,8 @@ export default {
             if (device.id in (this.devices.get(device.type) as any).keys()) {
                 return;
             }
-            let icon = this.getDeviceMarkerIcon(device);
-            let labelContent = this.getDeviceMarkerLabelContent(device);
+            let icon = getDeviceMarkerIcon(device);
+            let labelContent = getDeviceMarkerLabelContent(device);
             let marker = new AMap.Marker({
                 position: device.position,
                 icon,
@@ -135,8 +115,8 @@ export default {
         updateDevice(device: Device) {
             let marker = this.devices.get(device.type)?.get(device.id);
             marker?.setPosition([device.position.lng, device.position.lat]);
-            let icon = this.getDeviceMarkerIcon(device);
-            let labelContent = this.getDeviceMarkerLabelContent(device);
+            let icon = getDeviceMarkerIcon(device);
+            let labelContent = getDeviceMarkerLabelContent(device);
             marker?.setIcon(icon);
             marker?.setLabel({
                 content: labelContent,
