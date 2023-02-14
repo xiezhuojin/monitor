@@ -7,58 +7,77 @@ import websockets
 
 
 async def hello(websocket):
-    set_center = json.dumps(
-        ["map", "setCenter", "parameters = new AMap.LngLat(113.306646, 23.383048)"])
+    set_center = f"""
+        let parameter = new AMap.LngLat(113.306646, 23.383048);
+        app.$refs.map.setCenter(parameter);
+    """
     await websocket.send(set_center)
     await asyncio.sleep(1)
 
-    set_zooms = json.dumps(["map", "setZooms", "parameters = [8, 16]"])
+    set_zooms = f"""
+        let parameter = [8, 16];
+        app.$refs.map.setZooms(parameter);
+    """
     await websocket.send(set_zooms)
     await asyncio.sleep(0.5)
 
-    set_zoom = json.dumps(["map", "setZoom", "parameters = 14"])
+    set_zoom = f"""
+        let parameter = 14;
+        app.$refs.map.setZoom(parameter);
+    """
     await websocket.send(set_zoom)
     await asyncio.sleep(0.5)
 
-    set_pitch = json.dumps(["map", "setPitch", "parameters = 70"])
+    set_pitch = f"""
+        let parameter = 70;
+        app.$refs.map.setPitch(parameter);
+    """
     await websocket.send(set_pitch)
     await asyncio.sleep(1)
 
-    set_limit_bounds = json.dumps(
-        ["map", "setLimitBounds", "parameters =  new AMap.Bounds(new AMap.LngLat(113.271213, 23.362449), new AMap.LngLat(113.341422, 23.416018))"])
+    set_limit_bounds = f"""
+        let parameter =  new AMap.Bounds(new AMap.LngLat(113.271213, 23.362449), new AMap.LngLat(113.341422, 23.416018));
+        app.$refs.map.setLimitBounds(parameter);
+    """
     await websocket.send(set_limit_bounds)
     await asyncio.sleep(0.5)
 
-    add_horn = json.dumps(
-        ["map", "addDevice", "parameters = {id: 1, name: 'horn1', type: 'horn', position: new AMap.LngLat(113.306646, 23.383048), functional: true};"]
-    )
+    add_horn = f"""
+        let parameter = {{id: 1, name: 'horn1', type: 'horn', position: new AMap.LngLat(113.306646, 23.383048), functional: true}};
+        app.$refs.map.addDevice(parameter);
+    """
     await websocket.send(add_horn)
     await asyncio.sleep(0.5)
 
-    update_horn = json.dumps(
-        ["map", "updateDevice", "parameters = {id: 1, name: 'horn2', type: 'horn', position: new AMap.LngLat(113.307646, 23.383048), functional: false};"]
-    )
+    update_horn = f"""
+        let parameter = {{id: 1, name: 'horn2', type: 'horn', position: new AMap.LngLat(113.307646, 23.383048), functional: false}};
+        app.$refs.map.updateDevice(parameter);
+    """
     await websocket.send(update_horn)
     await asyncio.sleep(0.5)
 
-    # hide_horns = json.dumps(
-    #     ["map", "hideDevicesByType", "parameters = 'horn'"]
-    # )
+    # hide_horns = f"""
+    #     let type = 'horn';
+    #     let visibility = false
+    #     app.$refs.map.setDeviceVisibilityByType(type, visibility);
+    # """
     # await websocket.send(hide_horns)
     # await asyncio.sleep(0.5)
 
-    set_track_clear_interval = json.dumps(
-        ["map", "setTrackClearInterval", "parameters = 5000"]
-    )
+    set_track_clear_interval = f"""
+        let parameter = 5000;
+        app.$refs.map.setTrackClearInterval(parameter);
+    """
     await websocket.send(set_track_clear_interval)
     await asyncio.sleep(1)
 
     while True:
-        tracks = ", ".join([get_track() for i in range(10)])
-        updateTracks = json.dumps(
-            ["map", "updateTracks", f"parameters = [{tracks}]"]
-        )
-        await websocket.send(updateTracks)
+        tracks = "[" + ", ".join([get_track() for i in range(10)]) + "]"
+        update_tracks = f"""
+            let parameter = {tracks};
+            app.$refs.map.updateTracks(parameter);
+        """
+        await websocket.send(update_tracks)
         await asyncio.sleep(1)
 
 def get_track():
@@ -69,7 +88,7 @@ def get_track():
 
     lng = random.randrange(int(west * 1_000_000), int(east * 1_000_000)) / 1_000_000
     lat = random.randrange(int(south * 1_000_000), int(north * 1_000_000)) / 1_000_000
-    height = random.randint(100, 300)
+    height = random.randint(50, 2000)
     track_at = int(time.time())
     id = random.randint(1, 10)
     return "{id: " + str(id) + ", position: new AMap.LngLat" + f"({lng}, {lat}), " + f"altitude: {height}, trackAt: {track_at}" + "}"

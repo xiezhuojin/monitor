@@ -6,6 +6,7 @@ import cameraUp from "@/assets/icons/camera/up.png"
 import cameraDown from "@/assets/icons/camera/down.png"
 import radarUp from "@/assets/icons/radar/up.png"
 import radarDown from "@/assets/icons/radar/down.png"
+import unknown from "@/assets/icons/unknown.png"
 
 
 export function getDeviceMarkerIcon(device: Device): string {
@@ -17,10 +18,6 @@ export function getDeviceMarkerIcon(device: Device): string {
         case "radar":
             return device.functional? radarUp: radarDown;
         default:
-            return ""
+            return unknown
     }
-}
-
-export function getDeviceMarkerLabelContent(device: Device): string {
-    return device.name;
 }

@@ -27,11 +27,8 @@ export default ({
         this.handleEvent(event.data);
       })
     },
-    handleEvent(data: string) {
-      data = JSON.parse(data);
-      let [component, method, parameters] = data;
-      eval(parameters);
-      (this.$refs as any)[component][method](parameters);
+    handleEvent(command: string) {
+      eval(command);
     }
   },
 

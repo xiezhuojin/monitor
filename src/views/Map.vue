@@ -9,7 +9,7 @@ import { shallowRef } from "@vue/reactivity"
 import type { ShallowRef } from "@vue/reactivity"
 
 import type { Device, TrackPoint } from "@/interface"
-import { getDeviceMarkerIcon, getDeviceMarkerLabelContent } from "@/utils/marker"
+import { getDeviceMarkerIcon } from "@/utils/marker"
 
 export default {
     props: {
@@ -61,7 +61,7 @@ export default {
                         right: "10px",
                         bottom: "-80px",
                     },
-                }))
+                }));
             }).catch(e => {
                 console.log(e);
                 throw e;
@@ -96,19 +96,18 @@ export default {
                 return;
             }
             let icon = getDeviceMarkerIcon(device);
-            let labelContent = getDeviceMarkerLabelContent(device);
             let marker = new AMap.Marker({
                 position: device.position,
                 icon,
                 label: {
-                    content: labelContent,
+                    content: device.name,
                     direction: "top",
                     offset: new AMap.Pixel(0,-5),
                 }
             });
             ((this.map as any) as AMap.Map).add(marker);
             AMap.event.addListener(marker, "click", () => {
-                console.log("clicked");
+                this.deviceClickedHandler(device);
             });
             this.devices.get(device.type)?.set(device.id, marker);
         },
@@ -116,28 +115,19 @@ export default {
             let marker = this.devices.get(device.type)?.get(device.id);
             marker?.setPosition([device.position.lng, device.position.lat]);
             let icon = getDeviceMarkerIcon(device);
-            let labelContent = getDeviceMarkerLabelContent(device);
             marker?.setIcon(icon);
             marker?.setLabel({
-                content: labelContent,
+                content: device.name,
                 direction: "top",
                 offset: new AMap.Pixel(0,-5),
             })
         },
 
-        showDevicesByType(type: string) {
+        setDeviceVisibilityByType(type: string, visibility: boolean) {
             let devices = this.devices.get(type);
             if (devices) {
                 for (let marker of devices.values()) {
-                    marker.show();
-                }
-            }
-        },
-        hideDevicesByType(type: string) {
-            let devices = this.devices.get(type);
-            if (devices) {
-                for (let marker of devices.values()) {
-                    marker.hide();
+                    visibility? marker.show(): marker.hide();
                 }
             }
         },
@@ -205,6 +195,10 @@ export default {
             }
             this.trackClearIntervalID = setInterval(this.clearObsoletedTrack, 1000, timeout);
         },
+
+        deviceClickedHandler(device: Device) {
+            
+        }
     },
 
     mounted() {
@@ -231,5 +225,20 @@ export default {
 
 .amap-copyright {
     opacity: 0;
+}
+
+.amap-marker-label {
+    background: #f0f0f0;
+    color: #3c3c3c;
+    opacity: 0.8;
+    border: none;
+    border-radius: 25%;
+}
+
+.amap-icon img {
+    background-color: #f0f0f0;
+    padding: 4px;
+    opacity: 0.8;
+    border-radius: 25%;
 }
 </style>
