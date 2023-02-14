@@ -1,4 +1,4 @@
-import type { Device } from "@/interface"
+import type { Device, TrackPoint } from "@/interface"
 
 import hornUp from "@/assets/icons/horn/up.png"
 import hornDown from "@/assets/icons/horn/down.png"
@@ -20,4 +20,8 @@ export function getDeviceMarkerIcon(device: Device): string {
         default:
             return unknownUp;
     }
+}
+
+export function getTrackPointMarkerContent(trackPoint: TrackPoint): string {
+    return `${trackPoint.position.lng}, ${trackPoint.position.lat}`;
 }

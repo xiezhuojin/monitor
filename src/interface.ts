@@ -17,7 +17,7 @@ export interface TrackPoint {
 
 export interface TrackLine {
     trackPoints: TrackPoint[],
+    marker: AMap.LabelMarker,
     head: AMap.Object3D.RoundPoints,
     line: AMap.Object3D.MeshLine,
-    marker: AMap.LabelMarker,
 }
