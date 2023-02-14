@@ -14,3 +14,10 @@ export interface TrackPoint {
     altitude: number,
     trackAt: EpochTimeStamp,
 }
+
+export interface TrackLine {
+    trackPoints: TrackPoint[],
+    head: AMap.Object3D.RoundPoints,
+    line: AMap.Object3D.MeshLine,
+    marker: AMap.LabelMarker,
+}

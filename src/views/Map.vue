@@ -8,7 +8,7 @@ import AMapLoader from "@amap/amap-jsapi-loader"
 import { shallowRef } from "@vue/reactivity"
 import type { ShallowRef } from "@vue/reactivity"
 
-import type { Device, TrackPoint } from "@/interface"
+import type { Device, TrackPoint, TrackLine } from "@/interface"
 import { getDeviceMarkerIcon } from "@/utils/marker"
 
 export default {
@@ -24,15 +24,15 @@ export default {
 
         let devices: Map<string, Map<string, AMap.Marker>> = new Map();
 
-        let tracksLayer: AMap.Object3DLayer | null = null;
-        let trackLines: Map<number, [TrackPoint[], AMap.Object3D.RoundPoints, AMap.Object3D.MeshLine]> = new Map();
+        let track3DLayer: AMap.Object3DLayer | null = null;
+        let trackLines: Map<number, TrackLine> = new Map();
 
         return {
             map,
 
             devices,
 
-            tracksLayer,
+            track3DLayer,
             trackLines,
             trackClearIntervalID: 0,
         }
@@ -45,14 +45,14 @@ export default {
                 version: "1.4.15",
                 plugins: ["AMap.ControlBar", "Map3D"],
             }).then((AMap) => {
-                this.tracksLayer = new AMap.Object3DLayer();
+                this.track3DLayer = new AMap.Object3DLayer();
                 this.map = new AMap.Map("container", {
                     viewMode: "3D",
                     showLabel: false,
                     layers: [
                         new AMap.TileLayer.Satellite(),
                         new AMap.Buildings(),
-                        this.tracksLayer,
+                        this.track3DLayer,
                     ]
                 });
                 (this.map as any).addControl(new AMap.ControlBar({
@@ -140,27 +140,31 @@ export default {
                     head.geometry.vertexColors.push(1, 0, 0, 0.6);
                     head.geometry.pointSizes.push(5);
                     head.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
-                    this.tracksLayer.add(head);
+                    this.track3DLayer.add(head);
                     let line = new AMap.Object3D.MeshLine({
                         path: [trackPoint.position,],
                         height: [trackPoint.altitude,],
                         width: 1,
                         color: "#ffff00",
                     });
-                    this.tracksLayer.add(line);
-                    this.trackLines.set(trackPoint.id, [[trackPoint,], head, line]);
+                    this.track3DLayer.add(line);
+                    this.trackLines.set(trackPoint.id, {
+                        trackPoints: [trackPoint,],
+                        head,
+                        line
+                    });
                 } else {
-                    let item = this.trackLines.get(trackPoint.id);
-                    let lineTrackLines = item?.[0];
-                    lineTrackLines?.push(trackPoint);
-                    let head = item?.[1];
+                    let trackLine = this.trackLines.get(trackPoint.id);
+                    let trackPoints = trackLine?.trackPoints;
+                    trackLine?.trackPoints?.push(trackPoint);
+                    let head = trackLine?.head;
                     head.geometry.vertices.length = 0;
                     head.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
                     head.needUpdate = true;
                     head.reDraw();
-                    let line = item?.[2];
-                    let path = lineTrackLines?.map((trackPoint) => { return trackPoint.position });
-                    let height = lineTrackLines?.map((trackPoint) => { return trackPoint.altitude });
+                    let line = trackLine?.line;
+                    let path = trackPoints?.map((trackPoint) => { return trackPoint.position });
+                    let height = trackPoints?.map((trackPoint) => { return trackPoint.altitude });
                     line.setPath(path);
                     line.setHeight(height);
                 }
@@ -168,23 +172,21 @@ export default {
         },
         clearObsoletedTrack(timeout: number) {
             let now = new Date().getTime();
-            for (let item of this.trackLines.values()) {
-                item[0] = item[0].filter((trackPoint) => {
+            for (let trackLine of this.trackLines.values()) {
+                trackLine.trackPoints = trackLine.trackPoints.filter((trackPoint) => {
                     return now - trackPoint.trackAt * 1000 <= timeout;
                 })
             }
             let toDeleteTrackLineIDs = [];
-            for (let [id, item] of this.trackLines) {
-                if (item[0].length == 0) {
+            for (let [id, trackLine] of this.trackLines) {
+                if (trackLine.trackPoints.length == 0) {
                     toDeleteTrackLineIDs.push(id);
                 }
             }
             for (let toDeleteTrackLineID of toDeleteTrackLineIDs) {
-                let item = this.trackLines.get(toDeleteTrackLineID);
-                let head = item?.[1];
-                this.tracksLayer.remove(head);
-                let line = item?.[2];
-                this.tracksLayer.remove(line);
+                let trackLine = this.trackLines.get(toDeleteTrackLineID);
+                this.track3DLayer.remove(trackLine?.head);
+                this.track3DLayer.remove(trackLine?.line);
                 this.trackLines.delete(toDeleteTrackLineID);
             }
             this.updateTracks([]);
