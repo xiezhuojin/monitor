@@ -112,7 +112,7 @@ async def hello(websocket):
     await asyncio.sleep(2)
 
     while True:
-        tracks = "[" + ", ".join([get_track() for i in range(10)]) + "]"
+        tracks = "[" + ", ".join([get_track() for i in range(1000)]) + "]"
         update_tracks = f"""
             let parameter = {tracks};
             app.$refs.map.updateTracks(parameter);
@@ -130,7 +130,7 @@ def get_track():
     lat = random.randrange(int(south * 1_000_000), int(north * 1_000_000)) / 1_000_000
     height = random.randint(50, 5000)
     track_at = int(time.time())
-    id = random.randint(1, 10)
+    id = random.randint(1, 1000)
     size = random.choice(["'小型'", "'中型'", "'大型'"])
     danger = random.choice(["'低威'", "'中威'", "'高威'"])
     return "{id: " + str(id) + ", position: new AMap.LngLat" + f"({lng}, {lat}), " + f"altitude: {height}, trackAt: {track_at}, " + f"extra_info: {{size: {size}, danger: {danger}}}" + "}"

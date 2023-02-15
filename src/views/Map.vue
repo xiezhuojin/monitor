@@ -10,6 +10,7 @@ import type { ShallowRef } from "@vue/reactivity"
 
 import type { Device, TrackPoint, TrackLine, Zone } from "@/interface"
 import { getDeviceMarkerIcon, getTrackPointMarkerContent } from "@/utils/marker"
+import { interpolate_path_and_height } from "@/utils/interpolation";
 
 export default {
     props: {
@@ -188,7 +189,7 @@ export default {
                     (this.trackLabelsLayer as any).add(marker);
                     let head = new AMap.Object3D.RoundPoints();
                     head.geometry.vertexColors.push(1, 0, 0, 0.6);
-                    head.geometry.pointSizes.push(5);
+                    head.geometry.pointSizes.push(6);
                     head.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
                     this.track3DLayer.add(head);
                     let line = new AMap.Object3D.MeshLine({
@@ -221,6 +222,7 @@ export default {
                     let line = trackLine?.line;
                     let path = trackPoints?.map((trackPoint) => { return trackPoint.position });
                     let height = trackPoints?.map((trackPoint) => { return trackPoint.altitude });
+                    [path, height] = interpolate_path_and_height(path, height); 
                     line.setPath(path);
                     line.setHeight(height);
                 }
