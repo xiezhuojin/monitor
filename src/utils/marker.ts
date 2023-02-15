@@ -23,5 +23,5 @@ export function getDeviceMarkerIcon(device: Device): string {
 }
 
 export function getTrackPointMarkerContent(trackPoint: TrackPoint): string {
-    return `${trackPoint.position.lng}, ${trackPoint.position.lat}`;
+    return `${trackPoint.extra_info.size}, ${trackPoint.extra_info.danger}`;
 }

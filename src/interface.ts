@@ -13,6 +13,10 @@ export interface TrackPoint {
     position: AMap.LngLat,
     altitude: number,
     trackAt: EpochTimeStamp,
+    extra_info: {
+        size: string,
+        danger: string,
+    }
 }
 
 export interface TrackLine {

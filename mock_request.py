@@ -91,7 +91,9 @@ def get_track():
     height = random.randint(50, 5000)
     track_at = int(time.time())
     id = random.randint(1, 10)
-    return "{id: " + str(id) + ", position: new AMap.LngLat" + f"({lng}, {lat}), " + f"altitude: {height}, trackAt: {track_at}" + "}"
+    size = random.choice(["'小型'", "'中型'", "'大型'"])
+    danger = random.choice(["'低威'", "'中威'", "'高威'"])
+    return "{id: " + str(id) + ", position: new AMap.LngLat" + f"({lng}, {lat}), " + f"altitude: {height}, trackAt: {track_at}, " + f"extra_info: {{size: {size}, danger: {danger}}}" + "}"
 
 start_server = websockets.serve(hello, '0.0.0.0', 9000)
 
