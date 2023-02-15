@@ -8,7 +8,7 @@ import AMapLoader from "@amap/amap-jsapi-loader"
 import { shallowRef } from "@vue/reactivity"
 import type { ShallowRef } from "@vue/reactivity"
 
-import type { Device, TrackPoint, TrackLine } from "@/interface"
+import type { Device, TrackPoint, TrackLine, Zone } from "@/interface"
 import { getDeviceMarkerIcon, getTrackPointMarkerContent } from "@/utils/marker"
 
 export default {
@@ -28,6 +28,9 @@ export default {
         let trackLabelsLayer: AMap.LabelsLayer | null = null;
         let trackLines: Map<number, TrackLine> = new Map();
 
+        let zones3DLayer: AMap.Object3DLayer | null = null;
+        let zones: Map<string, Map<string, AMap.Object3D.Prism>> = new Map();
+
         return {
             map,
 
@@ -37,6 +40,9 @@ export default {
             trackLabelsLayer,
             trackLines,
             trackClearIntervalID: 0,
+
+            zones3DLayer,
+            zones,
         }
     },
 
@@ -49,6 +55,7 @@ export default {
             }).then((AMap) => {
                 this.track3DLayer = new AMap.Object3DLayer();
                 this.trackLabelsLayer = new AMap.LabelsLayer();
+                this.zones3DLayer = new AMap.Object3DLayer();
                 this.map = new AMap.Map("container", {
                     viewMode: "3D",
                     showLabel: false,
@@ -57,6 +64,7 @@ export default {
                         new AMap.Buildings({ heightFactor: 3 }),
                         this.trackLabelsLayer,
                         this.track3DLayer,
+                        this.zones3DLayer,
                     ]
                 });
                 (this.map as any).addControl(new AMap.ControlBar({
@@ -133,6 +141,32 @@ export default {
                 for (let marker of devices.values()) {
                     visibility ? marker.show() : marker.hide();
                 }
+            }
+        },
+
+        addZone(zone: Zone) {
+            if (!(zone.type in this.zones.keys())) {
+                this.zones.set(zone.type, new Map());
+            }
+            if (zone.id in (this.zones.get(zone.type) as any).keys()) {
+                return;
+            }
+            let block = new AMap.Object3D.Prism({
+                path: zone.path,
+                height: zone.height,
+                color: zone.color,
+            });
+            this.zones3DLayer.add(block);
+            this.zones.get(zone.type)?.set(zone.id, block);
+        },
+        updateZone(zone: Zone) {
+            let block = this.zones.get(zone.type)?.get(zone.id);
+            if (block) {
+                block.setOptions({
+                    path: zone.path,
+                    height: zone.height,
+                    color: zone.color,
+                })
             }
         },
 
@@ -222,9 +256,9 @@ export default {
         },
         setTrackMarkerVisibility(visibility: boolean) {
             if (visibility) {
-                this.map.add(this.trackLabelsLayer);
+                (this.map as any).add(this.trackLabelsLayer);
             } else {
-                this.map.remove(this.trackLabelsLayer);
+                (this.map as any).remove(this.trackLabelsLayer);
             }
         },
 

@@ -25,3 +25,11 @@ export interface TrackLine {
     head: AMap.Object3D.RoundPoints,
     line: AMap.Object3D.MeshLine,
 }
+
+export interface Zone {
+    id: string,
+    type: string,
+    path: AMap.LngLat[][],
+    height: number,
+    color: string,
+}

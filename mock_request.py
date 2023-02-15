@@ -71,6 +71,46 @@ async def hello(websocket):
     await websocket.send(set_track_clear_interval)
     await asyncio.sleep(1)
 
+    add_zone = f"""
+        let parameter = {{
+            id: '1',
+            type: 'danger',
+            path: [
+                [
+                    new AMap.LngLat(113.307706,23.3737), 
+                    new AMap.LngLat(113.315884,23.371746),
+                    new AMap.LngLat(113.314939,23.36729),
+                    new AMap.LngLat(113.307043,23.368054),
+                ],
+            ],
+            height: 1000,
+            color: '#0f0',
+        }};
+        app.$refs.map.addZone(parameter);
+    """
+    await websocket.send(add_zone)
+    await asyncio.sleep(2)
+
+    update_zone = f"""
+        let parameter = {{
+            id: '1',
+            type: 'danger',
+            path: [
+                [
+                    new AMap.LngLat(113.322407,23.405254), 
+                    new AMap.LngLat(113.325025,23.40464),
+                    new AMap.LngLat(113.323652,23.400166),
+                    new AMap.LngLat(113.316714,23.401668),
+                ],
+            ],
+            height: 1000,
+            color: '#00f',
+        }};
+        app.$refs.map.updateZone(parameter);
+    """
+    await websocket.send(update_zone)
+    await asyncio.sleep(2)
+
     while True:
         tracks = "[" + ", ".join([get_track() for i in range(10)]) + "]"
         update_tracks = f"""
