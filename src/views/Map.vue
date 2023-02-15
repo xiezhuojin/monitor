@@ -54,7 +54,7 @@ export default {
                     showLabel: false,
                     layers: [
                         new AMap.TileLayer.Satellite(),
-                        new AMap.Buildings(),
+                        new AMap.Buildings({ heightFactor: 3 }),
                         this.trackLabelsLayer,
                         this.track3DLayer,
                     ]
@@ -106,7 +106,7 @@ export default {
                 label: {
                     content: device.name,
                     direction: "top",
-                    offset: new AMap.Pixel(0,-5),
+                    offset: new AMap.Pixel(0, -5),
                 }
             });
             ((this.map as any) as AMap.Map).add(marker);
@@ -123,7 +123,7 @@ export default {
             marker?.setLabel({
                 content: device.name,
                 direction: "top",
-                offset: new AMap.Pixel(0,-5),
+                offset: new AMap.Pixel(0, -5),
             })
         },
 
@@ -131,7 +131,7 @@ export default {
             let devices = this.devices.get(type);
             if (devices) {
                 for (let marker of devices.values()) {
-                    visibility? marker.show(): marker.hide();
+                    visibility ? marker.show() : marker.hide();
                 }
             }
         },
@@ -144,6 +144,11 @@ export default {
                         position: trackPoint.position,
                         text: {
                             content: getTrackPointMarkerContent(trackPoint),
+                            style: {
+                                fontWeight: "bold",
+                                strokeColor: "#fff",
+                                strokeWidth: 4,
+                            }
                         }
                     });
                     (this.trackLabelsLayer as any).add(marker);
@@ -244,6 +249,7 @@ export default {
 <style scope>
 #container {
     height: 100vh;
+    filter: grayscale(10%) saturate(90%);
 }
 
 .amap-logo {
