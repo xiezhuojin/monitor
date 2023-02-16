@@ -84,7 +84,7 @@ async def hello(websocket):
                 ],
             ],
             height: 1000,
-            color: '#0f0',
+            color: '#0088ffcc',
         }};
         app.$refs.map.addZone(parameter);
     """
@@ -104,7 +104,7 @@ async def hello(websocket):
                 ],
             ],
             height: 1000,
-            color: '#00f',
+            color: '#0088aacc',
         }};
         app.$refs.map.updateZone(parameter);
     """

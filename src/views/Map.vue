@@ -26,7 +26,6 @@ export default {
         let devices: Map<string, Map<string, AMap.Marker>> = new Map();
 
         let track3DLayer: AMap.Object3DLayer | null = null;
-        let trackLabelsLayer: AMap.LabelsLayer | null = null;
         let trackLines: Map<number, TrackLine> = new Map();
 
         let zones3DLayer: AMap.Object3DLayer | null = null;
@@ -38,7 +37,6 @@ export default {
             devices,
 
             track3DLayer,
-            trackLabelsLayer,
             trackLines,
             trackClearIntervalID: 0,
 
@@ -55,7 +53,6 @@ export default {
                 plugins: ["AMap.ControlBar", "Map3D"],
             }).then((AMap) => {
                 this.track3DLayer = new AMap.Object3DLayer();
-                this.trackLabelsLayer = new AMap.LabelsLayer();
                 this.zones3DLayer = new AMap.Object3DLayer();
                 this.map = new AMap.Map("container", {
                     viewMode: "3D",
@@ -63,7 +60,6 @@ export default {
                     layers: [
                         new AMap.TileLayer.Satellite(),
                         new AMap.Buildings({ heightFactor: 3 }),
-                        this.trackLabelsLayer,
                         this.track3DLayer,
                         this.zones3DLayer,
                     ]
@@ -175,18 +171,6 @@ export default {
             trackPoints.forEach((trackPoint) => {
                 let coord = (this.map as any).lngLatToGeodeticCoord(trackPoint.position);
                 if (!(this.trackLines.has(trackPoint.id))) {
-                    let marker = new AMap.LabelMarker({
-                        position: trackPoint.position,
-                        text: {
-                            content: getTrackPointMarkerContent(trackPoint),
-                            style: {
-                                fontWeight: "bold",
-                                strokeColor: "#fff",
-                                strokeWidth: 4,
-                            }
-                        }
-                    });
-                    (this.trackLabelsLayer as any).add(marker);
                     let head = new AMap.Object3D.RoundPoints();
                     head.geometry.vertexColors.push(1, 0, 0, 0.6);
                     head.geometry.pointSizes.push(6);
@@ -201,17 +185,11 @@ export default {
                     this.track3DLayer.add(line);
                     this.trackLines.set(trackPoint.id, {
                         trackPoints: [trackPoint,],
-                        marker,
                         head,
                         line,
                     });
                 } else {
                     let trackLine = this.trackLines.get(trackPoint.id);
-                    let marker = trackLine?.marker;
-                    marker?.setPosition([trackPoint.position.lng, trackPoint.position.lat]);
-                    marker?.setText({
-                        content: getTrackPointMarkerContent(trackPoint),
-                    });
                     let trackPoints = trackLine?.trackPoints;
                     trackLine?.trackPoints?.push(trackPoint);
                     let head = trackLine?.head;
@@ -245,7 +223,6 @@ export default {
                 let trackLine = this.trackLines.get(toDeleteTrackLineID);
                 this.track3DLayer.remove(trackLine?.head);
                 this.track3DLayer.remove(trackLine?.line);
-                (this.trackLabelsLayer as any).remove(trackLine?.marker);
                 this.trackLines.delete(toDeleteTrackLineID);
             }
             this.updateTracks([]);
@@ -255,13 +232,6 @@ export default {
                 clearInterval(this.trackClearIntervalID);
             }
             this.trackClearIntervalID = setInterval(this.clearObsoletedTrack, 1000, timeout);
-        },
-        setTrackMarkerVisibility(visibility: boolean) {
-            if (visibility) {
-                (this.map as any).add(this.trackLabelsLayer);
-            } else {
-                (this.map as any).remove(this.trackLabelsLayer);
-            }
         },
 
         deviceClickedHandler(device: Device) {
