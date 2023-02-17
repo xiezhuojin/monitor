@@ -12,16 +12,13 @@ import unknownUp from "@/assets/icons/unknown/up.png"
 export class TrackLines {
     private map: AMap.Map;
     private threeDLayer: AMap.Object3DLayer;
-    private labelsLayer: AMap.LabelsLayer;
     private heads: AMap.Object3D.RoundPoints;
     private lines: AMap.Object3D.MeshLine[];
 
     constructor(map: AMap.Map) {
         this.map = map;
         this.threeDLayer = new AMap.Object3DLayer();
-        this.labelsLayer = new AMap.LabelsLayer();
         this.map.add(this.threeDLayer);
-        this.map.add(this.labelsLayer);
 
         this.heads = new AMap.Object3D.RoundPoints();
         this.heads.geometry.vertexColors.push(1, 0, 0, 0.6);
@@ -30,20 +27,23 @@ export class TrackLines {
         this.lines = [];
     }
 
-    setLabelsVisibility(visibility: boolean) {
-        visibility? this.labelsLayer.show(): this.labelsLayer.hide();
-    }
-
     showTracks(trackLines: TrackLine[]) {
-        this.labelsLayer.clear();
-        this.heads.geometry.length = 0;
-        trackLines.forEach((trackLine, i) => {
+        this.heads.geometry.vertices.length = 0;
+        this.heads.geometry.vertexColors.length = 0;
+        this.heads.geometry.pointSizes.length = 0;
+        trackLines.forEach((trackLine) => {
             let position = trackLine.positions[trackLine.positions.length - 1];
             let height = trackLine.heights[trackLine.heights.length - 1];
             let coord = (this.map as any).lngLatToGeodeticCoord(position);
             this.heads.geometry.vertices.push(coord.x, coord.y, -height);
+            this.heads.geometry.vertexColors.push(1, 0, 0, 0.6);
+            this.heads.geometry.pointSizes.push(6);
+        });
+        this.heads.needUpdate = true;
+        this.heads.reDraw();
         
-            if (i <= this.lines.length) {
+        trackLines.forEach((trackLine, i) => {
+            if (i < this.lines.length) {
                 let line = this.lines[i];
                 line.setPath(trackLine.positions);
                 line.setHeight(trackLine.heights);
@@ -57,22 +57,7 @@ export class TrackLines {
                 this.threeDLayer.add(line);
                 this.lines.push(line);
             }
-
-            let label = new AMap.LabelMarker({
-                position: [position.lng, position.lat],
-                text: {
-                    content: `${trackLine.extra_info.size} ${trackLine.extra_info.danger}`,
-                    direction: "center",
-                    offset: [0, 0],
-                    style: {
-                        fontSize: 12,
-                        strokeColor: '#fff',
-                        strokeWidth: 4,
-                    }
-                }
-            })
-            this.labelsLayer.add(label);
-        })
+        });
     }
 }
 
@@ -140,7 +125,7 @@ export class Devices {
         })
     }
 
-    setDeviceVisibilityByType(type: string, visibility: boolean) {
+    setVisibilityByType(type: string, visibility: boolean) {
         let devices = this.addedDevices.get(type);
         if (devices) {
             for (let marker of devices.values()) {
@@ -187,11 +172,15 @@ export class Zones {
         }
     }
 
-    setZoneVisibilityByType(type: string, visibility: boolean) {
+    setVisibilityByType(type: string, visibility: boolean) {
         let blocks = this.addedZones.get(type);
         if (blocks) {
             for (let block of blocks.values()) {
-                visibility ? block.show() : block.hide();
+                if (visibility) {
+                    this.threeDLayer.add(block);
+                } else {
+                    this.threeDLayer.remove(block);
+                }
             }
         }
     }

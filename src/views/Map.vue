@@ -52,7 +52,7 @@ export default {
                 version: "1.4.15",
                 plugins: ["AMap.ControlBar", "Map3D"],
             }).then((AMap) => {
-                this._isReady = true;
+                this.isReady = true;
 
                 this.map = new AMap.Map("map", {
                     viewMode: "3D",
