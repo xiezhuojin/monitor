@@ -1,10 +1,12 @@
 <template>
-  <MapView ref="map" :apiKey="'09def6871055e70fc8177a8282634716'">
+  <MapView ref="map" :apiKey="'09def6871055e70fc8177a8282634716'" :deviceClickedHandler="deviceClickedHandler">
   </MapView>
 </template>
 
 <script lang="ts">
 import MapView from "./views/Map.vue"
+
+import type { Device } from "./interface";
 
 export default ({
   components: {
@@ -14,7 +16,7 @@ export default ({
   methods: {
     isReady(): boolean {
       for (const _ in this.$refs) {
-        if (!(this.$refs as any)[_].isReady()) {
+        if (!(this.$refs as any)[_].isReady) {
           return false;
         }
       }
@@ -24,11 +26,12 @@ export default ({
     start() {
       const channel = new WebSocket("ws://localhost:9000");
       channel.addEventListener("message", (event) => {
-        this.handleEvent(event.data);
+        eval(event.data);
       })
     },
-    handleEvent(command: string) {
-      eval(command);
+
+    deviceClickedHandler(event: any, device: Device) {
+      console.log(device.extra_info.name);
     }
   },
 

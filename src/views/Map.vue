@@ -1,16 +1,19 @@
 <template>
-    <div id="container"></div>
+    <div id="container">
+        <div id="map"></div>
+    </div>
 </template>
 
 <script lang="ts">
-import "@amap/amap-jsapi-types";
-import AMapLoader from "@amap/amap-jsapi-loader"
 import { shallowRef } from "@vue/reactivity"
 import type { ShallowRef } from "@vue/reactivity"
+import type { PropType } from "vue"
+import AMapLoader from "@amap/amap-jsapi-loader"
 
-import type { Device, TrackPoint, TrackLine, Zone } from "@/interface"
-import { getDeviceMarkerIcon, getTrackPointMarkerContent } from "@/utils/marker"
-import { interpolate_path_and_height } from "@/utils/interpolation";
+import "@amap/amap-jsapi-types";
+
+import { TrackLines, Devices, Zones } from "@/class";
+import type { DeviceClickedHandler } from "@/interface";
 
 export default {
     props: {
@@ -18,29 +21,26 @@ export default {
             type: String,
             required: true,
         },
+        deviceClickedHandler: {
+            type: Function as PropType<DeviceClickedHandler>,
+            required: true,
+        }
     },
 
     setup() {
+        let isReady = false;
+
         let map: AMap.Map | ShallowRef<null> = shallowRef(null);
-
-        let devices: Map<string, Map<string, AMap.Marker>> = new Map();
-
-        let track3DLayer: AMap.Object3DLayer | null = null;
-        let trackLines: Map<number, TrackLine> = new Map();
-
-        let zones3DLayer: AMap.Object3DLayer | null = null;
-        let zones: Map<string, Map<string, AMap.Object3D.Prism>> = new Map();
+        let trackLines: TrackLines | null = null;
+        let devices: Devices | null = null;
+        let zones: Zones | null = null;
 
         return {
+            isReady,
+            
             map,
-
-            devices,
-
-            track3DLayer,
             trackLines,
-            trackClearIntervalID: 0,
-
-            zones3DLayer,
+            devices,
             zones,
         }
     },
@@ -52,201 +52,35 @@ export default {
                 version: "1.4.15",
                 plugins: ["AMap.ControlBar", "Map3D"],
             }).then((AMap) => {
-                this.track3DLayer = new AMap.Object3DLayer();
-                this.zones3DLayer = new AMap.Object3DLayer();
-                this.map = new AMap.Map("container", {
+                this._isReady = true;
+
+                this.map = new AMap.Map("map", {
                     viewMode: "3D",
                     showLabel: false,
                     layers: [
                         new AMap.TileLayer.Satellite(),
                         new AMap.Buildings({ heightFactor: 3 }),
-                        this.track3DLayer,
-                        this.zones3DLayer,
                     ]
                 });
                 (this.map as any).addControl(new AMap.ControlBar({
                     showZoomBar: false,
                     position: {
-                        right: "10px",
+                        right: "16px",
                         bottom: "-80px",
                     },
                 }));
+                (this.trackLines as any) = new TrackLines((this.map as any));
+                (this.devices as any) = new Devices((this.map as any), this.deviceClickedHandler);
+                (this.zones as any) = new Zones((this.map as any));
             }).catch(e => {
                 console.log(e);
                 throw e;
             })
         },
-
-        isReady(): boolean {
-            return typeof AMap == "object";
-        },
-
-        setCenter(center: AMap.LngLat) {
-            ((this.map as any) as AMap.Map).setCenter(center);
-        },
-        setZoom(zoom: number) {
-            ((this.map as any) as AMap.Map).setZoom(zoom);
-        },
-        setZooms(zooms: [number, number]) {
-            ((this.map as any) as AMap.Map).setZooms(zooms);
-        },
-        setPitch(pitch: number) {
-            ((this.map as any) as AMap.Map).setPitch(pitch);
-        },
-        setLimitBounds(LimitBounds: AMap.Bounds) {
-            ((this.map as any) as AMap.Map).setLimitBounds(LimitBounds);
-        },
-
-        addDevice(device: Device) {
-            if (!(device.type in this.devices)) {
-                this.devices.set(device.type, new Map());
-            }
-            if (device.id in (this.devices.get(device.type) as any).keys()) {
-                return;
-            }
-            let icon = getDeviceMarkerIcon(device);
-            let marker = new AMap.Marker({
-                position: device.position,
-                icon,
-                label: {
-                    content: device.name,
-                    direction: "top",
-                    offset: new AMap.Pixel(0, -5),
-                }
-            });
-            ((this.map as any) as AMap.Map).add(marker);
-            AMap.event.addListener(marker, "click", () => {
-                this.deviceClickedHandler(device);
-            });
-            this.devices.get(device.type)?.set(device.id, marker);
-        },
-        updateDevice(device: Device) {
-            let marker = this.devices.get(device.type)?.get(device.id);
-            marker?.setPosition([device.position.lng, device.position.lat]);
-            let icon = getDeviceMarkerIcon(device);
-            marker?.setIcon(icon);
-            marker?.setLabel({
-                content: device.name,
-                direction: "top",
-                offset: new AMap.Pixel(0, -5),
-            })
-        },
-
-        setDeviceVisibilityByType(type: string, visibility: boolean) {
-            let devices = this.devices.get(type);
-            if (devices) {
-                for (let marker of devices.values()) {
-                    visibility ? marker.show() : marker.hide();
-                }
-            }
-        },
-
-        addZone(zone: Zone) {
-            if (!(zone.type in this.zones.keys())) {
-                this.zones.set(zone.type, new Map());
-            }
-            if (zone.id in (this.zones.get(zone.type) as any).keys()) {
-                return;
-            }
-            let block = new AMap.Object3D.Prism({
-                path: zone.path,
-                height: zone.height,
-                color: zone.color,
-            });
-            this.zones3DLayer.add(block);
-            this.zones.get(zone.type)?.set(zone.id, block);
-        },
-        updateZone(zone: Zone) {
-            let block = this.zones.get(zone.type)?.get(zone.id);
-            if (block) {
-                block.setOptions({
-                    path: zone.path,
-                    height: zone.height,
-                    color: zone.color,
-                })
-            }
-        },
-
-        updateTracks(trackPoints: TrackPoint[]) {
-            trackPoints.forEach((trackPoint) => {
-                let coord = (this.map as any).lngLatToGeodeticCoord(trackPoint.position);
-                if (!(this.trackLines.has(trackPoint.id))) {
-                    let head = new AMap.Object3D.RoundPoints();
-                    head.geometry.vertexColors.push(1, 0, 0, 0.6);
-                    head.geometry.pointSizes.push(6);
-                    head.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
-                    this.track3DLayer.add(head);
-                    let line = new AMap.Object3D.MeshLine({
-                        path: [trackPoint.position,],
-                        height: [trackPoint.altitude,],
-                        width: 1,
-                        color: "#ffff00",
-                    });
-                    this.track3DLayer.add(line);
-                    this.trackLines.set(trackPoint.id, {
-                        trackPoints: [trackPoint,],
-                        head,
-                        line,
-                    });
-                } else {
-                    let trackLine = this.trackLines.get(trackPoint.id);
-                    let trackPoints = trackLine?.trackPoints;
-                    trackLine?.trackPoints?.push(trackPoint);
-                    let head = trackLine?.head;
-                    head.geometry.vertices.length = 0;
-                    head.geometry.vertices.push(coord.x, coord.y, -trackPoint.altitude);
-                    head.needUpdate = true;
-                    head.reDraw();
-                    let line = trackLine?.line;
-                    let path = trackPoints?.map((trackPoint) => { return trackPoint.position });
-                    let height = trackPoints?.map((trackPoint) => { return trackPoint.altitude });
-                    [path, height] = interpolate_path_and_height(path, height); 
-                    line.setPath(path);
-                    line.setHeight(height);
-                }
-            })
-        },
-        clearObsoletedTrack(timeout: number) {
-            let now = new Date().getTime();
-            for (let trackLine of this.trackLines.values()) {
-                trackLine.trackPoints = trackLine.trackPoints.filter((trackPoint) => {
-                    return now - trackPoint.trackAt * 1000 <= timeout;
-                })
-            }
-            let toDeleteTrackLineIDs = [];
-            for (let [id, trackLine] of this.trackLines) {
-                if (trackLine.trackPoints.length == 0) {
-                    toDeleteTrackLineIDs.push(id);
-                }
-            }
-            for (let toDeleteTrackLineID of toDeleteTrackLineIDs) {
-                let trackLine = this.trackLines.get(toDeleteTrackLineID);
-                this.track3DLayer.remove(trackLine?.head);
-                this.track3DLayer.remove(trackLine?.line);
-                this.trackLines.delete(toDeleteTrackLineID);
-            }
-            this.updateTracks([]);
-        },
-        setTrackClearInterval(timeout: number) {
-            if (this.trackClearIntervalID != 0) {
-                clearInterval(this.trackClearIntervalID);
-            }
-            this.trackClearIntervalID = setInterval(this.clearObsoletedTrack, 1000, timeout);
-        },
-
-        deviceClickedHandler(device: Device) {
-            console.log(device.name);
-        }
     },
 
     mounted() {
         this.initMap();
-    },
-
-    unmounted() {
-        if (this.trackClearIntervalID != 0) {
-            clearInterval(this.trackClearIntervalID);
-        }
     },
 
 }
@@ -255,7 +89,10 @@ export default {
 <style scope>
 #container {
     height: 100vh;
-    filter: grayscale(10%) saturate(90%);
+}
+
+#map {
+    height: 100%;
 }
 
 .amap-logo {

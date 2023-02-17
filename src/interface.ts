@@ -1,28 +1,26 @@
 import "@amap/amap-jsapi-types";
 
-export interface Device {
-    id: string,
-    name: string,
-    type: string,
-    position: AMap.LngLat,
-    functional: boolean,
-}
-
-export interface TrackPoint {
-    id: number,
-    position: AMap.LngLat,
-    altitude: number,
-    trackAt: EpochTimeStamp,
+export interface TrackLine {
+    positions: AMap.LngLat[],
+    heights: number[],
     extra_info: {
         size: string,
         danger: string,
     }
 }
 
-export interface TrackLine {
-    trackPoints: TrackPoint[],
-    head: AMap.Object3D.RoundPoints,
-    line: AMap.Object3D.MeshLine,
+export interface Device {
+    id: string,
+    type: string,
+    position: AMap.LngLat,
+    extra_info: {
+        name: string,
+        functional: boolean,
+    }
+}
+
+export interface DeviceClickedHandler {
+    (event: any, device: Device): void;
 }
 
 export interface Zone {
@@ -31,4 +29,12 @@ export interface Zone {
     path: AMap.LngLat[][],
     height: number,
     color: string,
+}
+
+export interface Staff {
+    id: string,
+    position: AMap.LngLat,
+    extra_info: {
+        name: string,
+    }
 }
