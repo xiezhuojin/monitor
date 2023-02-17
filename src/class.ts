@@ -27,7 +27,7 @@ export class TrackLines {
         this.lines = [];
     }
 
-    showTracks(trackLines: TrackLine[]) {
+    showTracks(trackLines: TrackLine[], ids: number[]) {
         this.heads.geometry.vertices.length = 0;
         this.heads.geometry.vertexColors.length = 0;
         this.heads.geometry.pointSizes.length = 0;
@@ -41,7 +41,10 @@ export class TrackLines {
         });
         this.heads.needUpdate = true;
         this.heads.reDraw();
-        
+       
+        for (let i = this.lines.length; i > trackLines.length; i--) {
+            this.threeDLayer.remove(this.lines[i - 1]);
+        }
         trackLines.forEach((trackLine, i) => {
             if (i < this.lines.length) {
                 let line = this.lines[i];
