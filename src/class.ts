@@ -1,5 +1,6 @@
-import "@amap/amap-jsapi-types";
-import type { Device, DeviceClickedHandler, TrackLine, Zone } from "./interface";
+import { deepCopy } from "@gby/deep-copy";
+
+import type { Airplane, Device, DeviceClickedHandler, Staff, TrackLine, Zone } from "./interface";
 
 import hornUp from "@/assets/icons/horn/up.png"
 import hornDown from "@/assets/icons/horn/down.png"
@@ -8,6 +9,7 @@ import cameraDown from "@/assets/icons/camera/down.png"
 import radarUp from "@/assets/icons/radar/up.png"
 import radarDown from "@/assets/icons/radar/down.png"
 import unknownUp from "@/assets/icons/unknown/up.png"
+import worker from "@/assets/icons/worker/worker.png"
 
 export class TrackLines {
     private map: AMap.Map;
@@ -27,7 +29,7 @@ export class TrackLines {
         this.lines = [];
     }
 
-    showTracks(trackLines: TrackLine[], ids: number[]) {
+    show(trackLines: TrackLine[], ids: number[]) {
         this.heads.geometry.vertices.length = 0;
         this.heads.geometry.vertexColors.length = 0;
         this.heads.geometry.pointSizes.length = 0;
@@ -42,8 +44,8 @@ export class TrackLines {
         this.heads.needUpdate = true;
         this.heads.reDraw();
        
-        for (let i = this.lines.length; i > trackLines.length; i--) {
-            this.threeDLayer.remove(this.lines[i - 1]);
+        while (this.lines.length > trackLines.length) {
+            this.threeDLayer.remove(this.lines.pop());
         }
         trackLines.forEach((trackLine, i) => {
             if (i < this.lines.length) {
@@ -66,15 +68,12 @@ export class TrackLines {
 
 export class Devices {
     private map: AMap.Map;
-    private threeDLayer: AMap.Object3DLayer;
-    private addedDevices: Map<string, Map<string, AMap.Marker>>;
+    private devices: Map<string, Map<string, AMap.Marker>>;
     private deviceClickHandler: DeviceClickedHandler;
 
     constructor(map: AMap.Map, deviceClickHandler: DeviceClickedHandler) {
         this.map = map
-        this.threeDLayer = new AMap.Object3DLayer();
-        this.addedDevices = new Map();
-        this.map.add(this.threeDLayer);
+        this.devices = new Map();
 
         this.deviceClickHandler = deviceClickHandler;
     }
@@ -82,54 +81,52 @@ export class Devices {
     getDeviceIcon(device: Device) {
         switch (device.type) {
             case "horn":
-                return device.extra_info.functional ? hornUp : hornDown;
+                return device.extraInfo.functional ? hornUp : hornDown;
             case "camera":
-                return device.extra_info.functional ? cameraUp : cameraDown;
+                return device.extraInfo.functional ? cameraUp : cameraDown;
             case "radar":
-                return device.extra_info.functional ? radarUp : radarDown;
+                return device.extraInfo.functional ? radarUp : radarDown;
             default:
                 return unknownUp;
         }
     }
 
-    addDevice(device: Device) {
-        if (!(device.type in this.addedDevices.keys())) {
-            this.addedDevices.set(device.type, new Map());
+    addOrUpdate(device: Device) {
+        if (!this.devices.has(device.type)) {
+            this.devices.set(device.type, new Map());
         }
-        if (device.id in (this.addedDevices.get(device.type) as any).keys()) {
-            return;
-        }
-        let icon = this.getDeviceIcon(device);
-        let marker = new AMap.Marker({
-            position: device.position,
-            icon,
-            label: {
-                content: device.extra_info.name,
+
+        if (!this.devices.get(device.type)?.has(device.id)) {
+            let icon = this.getDeviceIcon(device);
+            let marker = new AMap.Marker({
+                position: device.position,
+                icon,
+                label: {
+                    content: device.extraInfo.name,
+                    direction: "top",
+                    offset: new AMap.Pixel(0, -5),
+                }
+            });
+            this.map.add(marker);
+            AMap.event.addListener(marker, "click", (event: any) => {
+                this.deviceClickHandler(event, device);
+            });
+            this.devices.get(device.type)?.set(device.id, marker);
+        } else {
+            let marker = this.devices.get(device.type)?.get(device.id);
+            marker?.setPosition([device.position.lng, device.position.lat]);
+            let icon = this.getDeviceIcon(device);
+            marker?.setIcon(icon);
+            marker?.setLabel({
+                content: device.extraInfo.name,
                 direction: "top",
                 offset: new AMap.Pixel(0, -5),
-            }
-        });
-        this.map.add(marker);
-        AMap.event.addListener(marker, "click", (event: any) => {
-            this.deviceClickHandler(event, device);
-        });
-        this.addedDevices.get(device.type)?.set(device.id, marker);
-    }
-
-    updateDevice(device: Device) {
-        let marker = this.addedDevices.get(device.type)?.get(device.id);
-        marker?.setPosition([device.position.lng, device.position.lat]);
-        let icon = this.getDeviceIcon(device);
-        marker?.setIcon(icon);
-        marker?.setLabel({
-            content: device.extra_info.name,
-            direction: "top",
-            offset: new AMap.Pixel(0, -5),
-        })
+            })
+        }
     }
 
     setVisibilityByType(type: string, visibility: boolean) {
-        let devices = this.addedDevices.get(type);
+        let devices = this.devices.get(type);
         if (devices) {
             for (let marker of devices.values()) {
                 visibility ? marker.show() : marker.hide();
@@ -140,33 +137,29 @@ export class Devices {
 
 export class Zones {
     private threeDLayer: AMap.Object3DLayer;
-    private addedZones: Map<string, Map<string, AMap.Object3D.Prism>>;
+    private zones: Map<string, Map<string, AMap.Object3D.Prism>>;
 
     constructor(map: AMap.Map) {
         this.threeDLayer = new AMap.Object3DLayer();
-        this.addedZones = new Map();
+        this.zones = new Map();
         map.add(this.threeDLayer)
     }
 
-    addZone(zone: Zone) {
-        if (!(zone.type in this.addedZones.keys())) {
-            this.addedZones.set(zone.type, new Map());
+    addOrUpdate(zone: Zone) {
+        if (!this.zones.has(zone.type)) {
+            this.zones.set(zone.type, new Map());
         }
-        if (zone.id in (this.addedZones.get(zone.type) as any).keys()) {
-            return;
-        }
-        let block = new AMap.Object3D.Prism({
-            path: zone.path,
-            height: zone.height,
-            color: zone.color,
-        });
-        this.threeDLayer.add(block);
-        this.addedZones.get(zone.type)?.set(zone.id, block);
-    }
 
-    updateZone(zone: Zone) {
-        let block = this.addedZones.get(zone.type)?.get(zone.id);
-        if (block) {
+        if (!this.zones.get(zone.type)?.has(zone.id)) {
+            let block = new AMap.Object3D.Prism({
+                path: zone.path,
+                height: zone.height,
+                color: zone.color,
+            });
+            this.threeDLayer.add(block);
+            this.zones.get(zone.type)?.set(zone.id, block);
+        } else {
+            let block = this.zones.get(zone.type)?.get(zone.id);
             block.setOptions({
                 path: zone.path,
                 height: zone.height,
@@ -176,7 +169,7 @@ export class Zones {
     }
 
     setVisibilityByType(type: string, visibility: boolean) {
-        let blocks = this.addedZones.get(type);
+        let blocks = this.zones.get(type);
         if (blocks) {
             for (let block of blocks.values()) {
                 if (visibility) {
@@ -189,3 +182,80 @@ export class Zones {
     }
 }
 
+export class Staffs {
+    private map: AMap.Map;
+    private staffs: Map<string, AMap.Marker>;
+
+    constructor(map: AMap.Map) {
+        this.map = map;
+        this.staffs = new Map();
+    }
+
+    addOrUpdate(staff: Staff) {
+        if (!this.staffs.has(staff.id)) {
+            let icon = worker;
+            let marker = new AMap.Marker({
+                position: staff.position,
+                icon,
+                label: {
+                    content: staff.extraInfo.name,
+                    direction: "top",
+                    offset: new AMap.Pixel(0, -5),
+                }
+            });
+            this.map.add(marker);
+            this.staffs.set(staff.id, marker);
+        } else {
+            let marker = this.staffs.get(staff.id);
+            marker?.setPosition([staff.position.lng, staff.position.lat])
+            marker?.setLabel({
+                content: staff.extraInfo.name,
+                direction: "top",
+                offset: new AMap.Pixel(0, -5),
+            })
+        }
+    }
+
+    toggleVisibility(visibility: boolean) {
+        for (let staff of this.staffs.values()) {
+            visibility? staff.show(): staff.hide();
+        }
+    }
+}
+
+export class Airplanes {
+    private threeDLayer: AMap.Object3DLayer;
+    private airplaneModel: any;
+
+    constructor(map: AMap.Map) {
+        this.threeDLayer = new AMap.Object3DLayer();
+        map.add(this.threeDLayer)
+        this.airplaneModel = null;
+    }
+
+    setAirplaneModel(airplaneModel: any) {
+        this.airplaneModel = airplaneModel;
+    }
+
+    show(airplanes: Airplane[]) {
+        this.threeDLayer.clear();
+        airplanes.forEach((airplane) => {
+            let airplaneModel = deepCopy(this.airplaneModel);
+            airplaneModel.setOption({
+                position: airplane.position,
+                height: airplane.height,
+                scale: airplane.scale,
+            });
+            if (airplane.rotateX) {
+                airplaneModel.rotateX(airplane.rotateX);
+            }
+            if (airplane.rotateY) {
+                airplaneModel.rotateY(airplane.rotateY);
+            }
+            if (airplane.rotateZ) {
+                airplaneModel.rotateZ(airplane.rotateZ);
+            }
+            this.threeDLayer.add(airplaneModel);
+        })
+    }
+}

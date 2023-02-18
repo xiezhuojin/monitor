@@ -4,7 +4,7 @@ export interface TrackLine {
     positions: AMap.LngLat[],
     heights: number[],
 
-    extra_info: {
+    extraInfo: {
         size: string,
         danger: string,
     }
@@ -15,7 +15,7 @@ export interface Device {
     type: string,
     position: AMap.LngLat,
 
-    extra_info: {
+    extraInfo: {
         name: string,
         functional: boolean,
     }
@@ -33,11 +33,24 @@ export interface Zone {
     color: string,
 }
 
+export interface Airplane {
+    position: AMap.LngLat,
+    height: number,
+    scale: number,
+    rotateX: number | null,
+    rotateY: number | null,
+    rotateZ: number | null,
+
+    extraInfo: {
+        name: string,
+    }
+}
+
 export interface Staff {
     id: string,
     position: AMap.LngLat,
 
-    extra_info: {
+    extraInfo: {
         name: string,
     }
 }

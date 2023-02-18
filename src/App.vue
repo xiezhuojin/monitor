@@ -14,15 +14,6 @@ export default ({
   },
 
   methods: {
-    isReady(): boolean {
-      for (const _ in this.$refs) {
-        if (!(this.$refs as any)[_].isReady) {
-          return false;
-        }
-      }
-      return true;
-    },
-
     start() {
       const channel = new WebSocket("ws://localhost:9000");
       channel.addEventListener("message", (event) => {
@@ -31,14 +22,14 @@ export default ({
     },
 
     deviceClickedHandler(event: any, device: Device) {
-      console.log(device.extra_info.name);
+      console.log("clicked");
     }
   },
 
   mounted() {
     (window as any).app = this;
     let checkIsReadyIntervalID = setInterval(() => {
-      if (this.isReady()) {
+      if ((this.$refs as any).map.isReady()) {
         clearInterval(checkIsReadyIntervalID);
         this.start();
       }

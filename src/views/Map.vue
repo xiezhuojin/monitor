@@ -12,8 +12,11 @@ import AMapLoader from "@amap/amap-jsapi-loader"
 
 import "@amap/amap-jsapi-types";
 
-import { TrackLines, Devices, Zones } from "@/class";
+import { TrackLines, Devices, Zones, Airplanes, Staffs } from "@/class";
 import type { DeviceClickedHandler } from "@/interface";
+
+// import airplaneGltf from "@/assets/models/airplane/airplane.gltf?url";
+const airplaneGltf = "https://a.amap.com/jsapi_demos/static/gltf/Duck.gltf"
 
 export default {
     props: {
@@ -28,20 +31,26 @@ export default {
     },
 
     setup() {
-        let isReady = false;
-
         let map: AMap.Map | ShallowRef<null> = shallowRef(null);
         let trackLines: TrackLines | null = null;
         let devices: Devices | null = null;
         let zones: Zones | null = null;
+        let staffs: Staffs | null = null;
+        let airplanes: Airplanes | null = null;
+
+        let isMapReady = false;
+        let isAirplaneModelReady = false;
 
         return {
-            isReady,
-            
+            isMapReady,
+            isAirplaneModelReady,
+
             map,
             trackLines,
             devices,
             zones,
+            staffs,
+            airplanes,
         }
     },
 
@@ -50,10 +59,8 @@ export default {
             AMapLoader.load({
                 key: this.apiKey,
                 version: "1.4.15",
-                plugins: ["AMap.ControlBar", "Map3D"],
+                plugins: ["AMap.ControlBar", "Map3D", "AMap.GltfLoader"],
             }).then((AMap) => {
-                this.isReady = true;
-
                 this.map = new AMap.Map("map", {
                     viewMode: "3D",
                     showLabel: false,
@@ -69,14 +76,26 @@ export default {
                         bottom: "-80px",
                     },
                 }));
-                (this.trackLines as any) = new TrackLines((this.map as any));
-                (this.devices as any) = new Devices((this.map as any), this.deviceClickedHandler);
-                (this.zones as any) = new Zones((this.map as any));
+                (this.trackLines as any) = new TrackLines(this.map as any);
+                (this.devices as any) = new Devices(this.map as any, this.deviceClickedHandler);
+                (this.zones as any) = new Zones(this.map as any);
+                (this.staffs as any) = new Staffs(this.map as any);
+                (this.airplanes as any) = new Airplanes((this.map as any));
+                let gltfLoader = new AMap.GltfLoader();
+                gltfLoader.load(airplaneGltf, (airplaneModel: any) => {
+                    (this.airplanes as any).setAirplaneModel(airplaneModel);
+                    this.isAirplaneModelReady = true;
+                });
+                this.isMapReady = true;
             }).catch(e => {
                 console.log(e);
                 throw e;
             })
         },
+
+        isReady() {
+            return this.isMapReady && this.isAirplaneModelReady;
+        }
     },
 
     mounted() {
