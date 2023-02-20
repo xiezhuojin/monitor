@@ -15,9 +15,6 @@ import "@amap/amap-jsapi-types";
 import { TrackLines, Devices, Zones, Airplanes, Staffs } from "@/class";
 import type { DeviceClickedHandler } from "@/interface";
 
-// import airplaneGltf from "@/assets/models/airplane/airplane.gltf?url";
-const airplaneGltf = "https://a.amap.com/jsapi_demos/static/gltf/Duck.gltf"
-
 export default {
     props: {
         apiKey: {
@@ -39,11 +36,9 @@ export default {
         let airplanes: Airplanes | null = null;
 
         let isMapReady = false;
-        let isAirplaneModelReady = false;
 
         return {
             isMapReady,
-            isAirplaneModelReady,
 
             map,
             trackLines,
@@ -81,11 +76,7 @@ export default {
                 (this.zones as any) = new Zones(this.map as any);
                 (this.staffs as any) = new Staffs(this.map as any);
                 (this.airplanes as any) = new Airplanes((this.map as any));
-                let gltfLoader = new AMap.GltfLoader();
-                gltfLoader.load(airplaneGltf, (airplaneModel: any) => {
-                    (this.airplanes as any).setAirplaneModel(airplaneModel);
-                    this.isAirplaneModelReady = true;
-                });
+
                 this.isMapReady = true;
             }).catch(e => {
                 console.log(e);
@@ -94,7 +85,7 @@ export default {
         },
 
         isReady() {
-            return this.isMapReady && this.isAirplaneModelReady;
+            return this.isReady;
         }
     },
 

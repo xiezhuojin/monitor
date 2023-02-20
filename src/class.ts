@@ -1,5 +1,6 @@
 import type {
-    Airplane, CuboidZone, CylinderZone, Device, DeviceClickedHandler, Staff, TrackLine, Zone
+    Airplane, CuboidZone, CylinderZone, Device, DeviceClickedHandler, Staff,
+    TrackLine,
 } from "./interface";
 
 import hornUp from "@/assets/icons/horn/up.png"
@@ -11,14 +12,19 @@ import radarDown from "@/assets/icons/radar/down.png"
 import unknownUp from "@/assets/icons/unknown/up.png"
 import worker from "@/assets/icons/worker/worker.png"
 
+import airplaneGltf from "@/assets/models/airplane/model.gltf?url";
+
 export class TrackLines {
     private map: AMap.Map;
+    private labelsLayer: AMap.LabelsLayer;
     private threeDLayer: AMap.Object3DLayer;
     private heads: AMap.Object3D.RoundPoints;
     private lines: AMap.Object3D.MeshLine[];
 
     constructor(map: AMap.Map) {
         this.map = map;
+        this.labelsLayer = new AMap.LabelsLayer({ collision: false });
+        this.map.add(this.labelsLayer);
         this.threeDLayer = new AMap.Object3DLayer();
         this.map.add(this.threeDLayer);
 
@@ -30,6 +36,24 @@ export class TrackLines {
     }
 
     show(trackLines: TrackLine[], ids: number[]) {
+        this.labelsLayer.clear();
+        let markers = trackLines.map((trackLine) => {
+            let position = trackLine.positions[trackLine.positions.length - 1];
+            let content = `${trackLine.extraInfo.type} ${trackLine.extraInfo.size}`
+            let marker = new AMap.LabelMarker({
+                position,
+                text: {
+                    content,
+                    style: {
+                        strokeColor: "#fff",
+                        strokeWidth: 3,
+                    }
+                }
+            })
+            return marker;
+        });
+        this.labelsLayer.add(markers);
+
         this.heads.geometry.vertices.length = 0;
         this.heads.geometry.vertexColors.length = 0;
         this.heads.geometry.pointSizes.length = 0;
@@ -278,38 +302,33 @@ export class Staffs {
 
 export class Airplanes {
     private threeDLayer: AMap.Object3DLayer;
-    private airplaneModel: any;
 
     constructor(map: AMap.Map) {
         this.threeDLayer = new AMap.Object3DLayer();
         map.add(this.threeDLayer)
-        this.airplaneModel = null;
-    }
-
-    setAirplaneModel(airplaneModel: any) {
-        this.airplaneModel = airplaneModel;
     }
 
     show(airplanes: Airplane[]) {
         this.threeDLayer.clear();
+        let gltfLoader = new AMap.GltfLoader();
         airplanes.forEach((airplane) => {
-            // TODO fix here
-            let airplaneModel = Object.create(this.airplaneModel);
-            airplaneModel.setOption({
-                position: airplane.position,
-                height: airplane.height,
-                scale: airplane.scale,
+            gltfLoader.load(airplaneGltf, (airplaneModel: any) => {
+                airplaneModel.setOption({
+                    position: airplane.position,
+                    height: airplane.height,
+                    scale: airplane.scale,
+                });
+                if (airplane.rotateX) {
+                    airplaneModel.rotateX(airplane.rotateX);
+                }
+                if (airplane.rotateY) {
+                    airplaneModel.rotateY(airplane.rotateY);
+                }
+                if (airplane.rotateZ) {
+                    airplaneModel.rotateZ(airplane.rotateZ);
+                }
+                this.threeDLayer.add(airplaneModel);
             });
-            if (airplane.rotateX) {
-                airplaneModel.rotateX(airplane.rotateX);
-            }
-            if (airplane.rotateY) {
-                airplaneModel.rotateY(airplane.rotateY);
-            }
-            if (airplane.rotateZ) {
-                airplaneModel.rotateZ(airplane.rotateZ);
-            }
-            this.threeDLayer.add(airplaneModel);
         })
     }
 }

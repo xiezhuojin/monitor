@@ -7,7 +7,6 @@ export interface TrackLine {
     extraInfo: {
         type: string,
         size: string,
-        danger: string,
     }
 }
 
