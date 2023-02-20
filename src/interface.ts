@@ -5,6 +5,7 @@ export interface TrackLine {
     heights: number[],
 
     extraInfo: {
+        type: string,
         size: string,
         danger: string,
     }
@@ -25,12 +26,22 @@ export interface DeviceClickedHandler {
     (event: any, device: Device): void;
 }
 
-export interface Zone {
+export interface CylinderZone {
     id: string,
     type: string,
-    path: AMap.LngLat[][],
-    height: number,
-    color: string,
+    position: AMap.LngLat,
+    radiusInMeter: number,
+    heightInMeter: number,
+}
+
+export interface CuboidZone {
+    id: string,
+    type: string,
+    position: AMap.LngLat,
+    lengthInMeter: number,
+    widthInMeter: number,
+    heightInMeter: number,
+    rotation: number,
 }
 
 export interface Airplane {

@@ -66,7 +66,7 @@ export default {
                     showLabel: false,
                     layers: [
                         new AMap.TileLayer.Satellite(),
-                        new AMap.Buildings({ heightFactor: 3 }),
+                        new AMap.Buildings({ heightFactor: 1 }),
                     ]
                 });
                 (this.map as any).addControl(new AMap.ControlBar({

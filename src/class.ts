@@ -1,6 +1,6 @@
-import { deepCopy } from "@gby/deep-copy";
-
-import type { Airplane, Device, DeviceClickedHandler, Staff, TrackLine, Zone } from "./interface";
+import type {
+    Airplane, CuboidZone, CylinderZone, Device, DeviceClickedHandler, Staff, TrackLine, Zone
+} from "./interface";
 
 import hornUp from "@/assets/icons/horn/up.png"
 import hornDown from "@/assets/icons/horn/down.png"
@@ -38,12 +38,16 @@ export class TrackLines {
             let height = trackLine.heights[trackLine.heights.length - 1];
             let coord = (this.map as any).lngLatToGeodeticCoord(position);
             this.heads.geometry.vertices.push(coord.x, coord.y, -height);
-            this.heads.geometry.vertexColors.push(1, 0, 0, 0.6);
+            if (trackLine.extraInfo.type == "鸟") {
+                this.heads.geometry.vertexColors.push(0, 0, 1, 0.6);
+            } else {
+                this.heads.geometry.vertexColors.push(1, 0, 0, 0.6);
+            }
             this.heads.geometry.pointSizes.push(6);
         });
         this.heads.needUpdate = true;
         this.heads.reDraw();
-       
+
         while (this.lines.length > trackLines.length) {
             this.threeDLayer.remove(this.lines.pop());
         }
@@ -137,48 +141,97 @@ export class Devices {
 
 export class Zones {
     private threeDLayer: AMap.Object3DLayer;
-    private zones: Map<string, Map<string, AMap.Object3D.Prism>>;
+    private map: AMap.Map;
+    private zones: Map<string, Map<string, AMap.Object3D.Mesh>>;
 
     constructor(map: AMap.Map) {
+        this.map = map;
         this.threeDLayer = new AMap.Object3DLayer();
+        this.map.add(this.threeDLayer);
+
         this.zones = new Map();
-        map.add(this.threeDLayer)
     }
 
-    addOrUpdate(zone: Zone) {
-        if (!this.zones.has(zone.type)) {
-            this.zones.set(zone.type, new Map());
+    addCylinder(cylinderZone: CylinderZone) {
+        if (!this.zones.has(cylinderZone.type)) {
+            this.zones.set(cylinderZone.type, new Map());
+        }
+        if (this.zones.get(cylinderZone.type)?.has(cylinderZone.id)) {
+            return;
         }
 
-        if (!this.zones.get(zone.type)?.has(zone.id)) {
-            let block = new AMap.Object3D.Prism({
-                path: zone.path,
-                height: zone.height,
-                color: zone.color,
-            });
-            this.threeDLayer.add(block);
-            this.zones.get(zone.type)?.set(zone.id, block);
-        } else {
-            let block = this.zones.get(zone.type)?.get(zone.id);
-            block.setOptions({
-                path: zone.path,
-                height: zone.height,
-                color: zone.color,
-            })
+        let segment = 20;
+        let center = this.map.lngLatToGeodeticCoord(cylinderZone.position);
+        // TODO set radius and height
+        let radius = cylinderZone.radiusInMeter;
+        let height = cylinderZone.heightInMeter;
+
+        let cylinder = new AMap.Object3D.Mesh();
+        let geometry = cylinder.geometry;
+        let stepAngle = 2 * Math.PI / segment;
+        let verticesLength = segment * 2;
+        for (let i = 0; i < segment; ++i) {
+            let x = center.x + radius * Math.cos(stepAngle * i);
+            let y = center.y + radius * Math.sin(stepAngle * i);
+            geometry.vertices.push(x, y, 0);
+            geometry.vertices.push(x, y, -height);
+
+            let bottomIndex = i * 2;
+            let topIndex = bottomIndex + 1;
+            let nextBottomIndex = (bottomIndex + 2) % verticesLength;
+            let nextTopIndex = (bottomIndex + 3) % verticesLength;
+
+            geometry.faces.push(bottomIndex, topIndex, nextTopIndex);
+            geometry.faces.push(bottomIndex, nextTopIndex, nextBottomIndex);
         }
+        geometry.vertices.push(center.x, center.y, 0);
+        geometry.vertices.push(center.x, center.y, -height);
+        for (let i = 0; i < segment; ++i) {
+            let bottomIndex = i * 2;
+            let topIndex = bottomIndex + 1;
+            // let nextBottomIndex = (bottomIndex + 2) % verticesLength;
+            let nextTopIndex = (bottomIndex + 3) % verticesLength;
+            geometry.faces.push(verticesLength + 1, nextTopIndex, topIndex);
+            // geometry.faces.push(verticesLength, nextBottomIndex, bottomIndex);
+        }
+        cylinder.transparent = true;
+        for (let i = 0; i < geometry.vertices.length; ++i) {
+            geometry.vertexColors.push(0, 0.4, 0, 0.5);
+        }
+        this.threeDLayer.add(cylinder);
+
+        this.zones.get(cylinderZone.type)?.set(cylinderZone.id, cylinder);
     }
 
-    setVisibilityByType(type: string, visibility: boolean) {
-        let blocks = this.zones.get(type);
-        if (blocks) {
-            for (let block of blocks.values()) {
-                if (visibility) {
-                    this.threeDLayer.add(block);
-                } else {
-                    this.threeDLayer.remove(block);
+    addCuboid(cuboidZone: CuboidZone) {
+        if (!this.zones.has(cuboidZone.type)) {
+            this.zones.set(cuboidZone.type, new Map());
+        }
+        if (this.zones.get(cuboidZone.type)?.has(cuboidZone.id)) {
+            return;
+        }
+
+        let cuboid = new AMap.Object3D.Mesh();
+        // TODO do mesh
+        this.threeDLayer.add(cuboid);
+
+        this.zones.get(cuboidZone.type)?.set(cuboidZone.id, cuboid);
+    }
+
+    toggleZonesVisibilityByTypesAndIds(
+        types: string[], ids: string[], visibility: boolean
+    ) {
+        this.zones.forEach((item, type) => {
+            item.forEach((zone, id) => {
+                if (types.includes(type) && ids.includes(id)) {
+                    if (visibility) {
+                        this.threeDLayer.add(zone);
+                    } else {
+                        this.threeDLayer.remove(zone);
+                    }
                 }
-            }
-        }
+            })
+        })
     }
 }
 
@@ -218,7 +271,7 @@ export class Staffs {
 
     toggleVisibility(visibility: boolean) {
         for (let staff of this.staffs.values()) {
-            visibility? staff.show(): staff.hide();
+            visibility ? staff.show() : staff.hide();
         }
     }
 }
@@ -240,7 +293,8 @@ export class Airplanes {
     show(airplanes: Airplane[]) {
         this.threeDLayer.clear();
         airplanes.forEach((airplane) => {
-            let airplaneModel = deepCopy(this.airplaneModel);
+            // TODO fix here
+            let airplaneModel = Object.create(this.airplaneModel);
             airplaneModel.setOption({
                 position: airplane.position,
                 height: airplane.height,
