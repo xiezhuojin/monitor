@@ -28,14 +28,14 @@ export default {
     },
 
     setup() {
+        let isMapReady = false;
+
         let map: AMap.Map | ShallowRef<null> = shallowRef(null);
         let trackLines: TrackLines | null = null;
         let devices: Devices | null = null;
         let zones: Zones | null = null;
         let staffs: Staffs | null = null;
         let airplanes: Airplanes | null = null;
-
-        let isMapReady = false;
 
         return {
             isMapReady,
@@ -67,15 +67,22 @@ export default {
                 (this.map as any).addControl(new AMap.ControlBar({
                     showZoomBar: false,
                     position: {
-                        right: "16px",
-                        bottom: "-80px",
+                        right: "22%",
+                        bottom: "70%",
                     },
                 }));
-                (this.trackLines as any) = new TrackLines(this.map as any);
+
+                let coord_1 = (this.map as any).lngLatToGeodeticCoord(new AMap.LngLat(0, 0));
+                let coord_2 = (this.map as any).lngLatToGeodeticCoord(new AMap.LngLat(0, 0.00001));
+                let mapProportion = Math.sqrt(
+                    Math.pow((coord_2.x - coord_1.x), 2) + Math.pow((coord_2.y - coord_1.y), 2)
+                ) / 1.05;
+
+                (this.trackLines as any) = new TrackLines(this.map as any, mapProportion);
                 (this.devices as any) = new Devices(this.map as any, this.deviceClickedHandler);
-                (this.zones as any) = new Zones(this.map as any);
+                (this.zones as any) = new Zones(this.map as any, mapProportion);
                 (this.staffs as any) = new Staffs(this.map as any);
-                (this.airplanes as any) = new Airplanes((this.map as any));
+                (this.airplanes as any) = new Airplanes(this.map as any, mapProportion);
 
                 this.isMapReady = true;
             }).catch(e => {

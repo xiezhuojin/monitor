@@ -15,13 +15,17 @@ import worker from "@/assets/icons/worker/worker.png"
 import airplaneGltf from "@/assets/models/airplane/model.gltf?url";
 
 export class TrackLines {
+    private mapProportion: number;
+
     private map: AMap.Map;
     private labelsLayer: AMap.LabelsLayer;
     private threeDLayer: AMap.Object3DLayer;
     private heads: AMap.Object3D.RoundPoints;
     private lines: AMap.Object3D.MeshLine[];
 
-    constructor(map: AMap.Map) {
+    constructor(map: AMap.Map, mapProportion: number) {
+        this.mapProportion = mapProportion;
+
         this.map = map;
         this.labelsLayer = new AMap.LabelsLayer({ collision: false });
         this.map.add(this.labelsLayer);
@@ -59,7 +63,8 @@ export class TrackLines {
         this.heads.geometry.pointSizes.length = 0;
         trackLines.forEach((trackLine) => {
             let position = trackLine.positions[trackLine.positions.length - 1];
-            let height = trackLine.heights[trackLine.heights.length - 1];
+            let height = trackLine.heightsInMeter[trackLine.heightsInMeter.length - 1]
+                * this.mapProportion;
             let coord = (this.map as any).lngLatToGeodeticCoord(position);
             this.heads.geometry.vertices.push(coord.x, coord.y, -height);
             if (trackLine.extraInfo.type == "鸟") {
@@ -76,14 +81,17 @@ export class TrackLines {
             this.threeDLayer.remove(this.lines.pop());
         }
         trackLines.forEach((trackLine, i) => {
+            let height = trackLine.heightsInMeter.map((h) => {
+                return h * this.mapProportion;
+            })
             if (i < this.lines.length) {
                 let line = this.lines[i];
                 line.setPath(trackLine.positions);
-                line.setHeight(trackLine.heights);
+                line.setHeight(height);
             } else {
                 let line = new AMap.Object3D.MeshLine({
                     path: trackLine.positions,
-                    height: trackLine.heights,
+                    height,
                     width: 1,
                     color: "#ffff00",
                 })
@@ -164,11 +172,15 @@ export class Devices {
 }
 
 export class Zones {
+    private mapProportion: number;
+
     private threeDLayer: AMap.Object3DLayer;
     private map: AMap.Map;
     private zones: Map<string, Map<string, AMap.Object3D.Mesh>>;
 
-    constructor(map: AMap.Map) {
+    constructor(map: AMap.Map, mapProportion: number) {
+        this.mapProportion = mapProportion;
+
         this.map = map;
         this.threeDLayer = new AMap.Object3DLayer();
         this.map.add(this.threeDLayer);
@@ -184,11 +196,10 @@ export class Zones {
             return;
         }
 
-        let segment = 20;
+        let segment = 40;
         let center = this.map.lngLatToGeodeticCoord(cylinderZone.position);
-        // TODO set radius and height
-        let radius = cylinderZone.radiusInMeter;
-        let height = cylinderZone.heightInMeter;
+        let radius = cylinderZone.radiusInMeter * this.mapProportion;
+        let height = cylinderZone.heightInMeter * this.mapProportion;
 
         let cylinder = new AMap.Object3D.Mesh();
         let geometry = cylinder.geometry;
@@ -219,7 +230,7 @@ export class Zones {
             // geometry.faces.push(verticesLength, nextBottomIndex, bottomIndex);
         }
         cylinder.transparent = true;
-        for (let i = 0; i < geometry.vertices.length; ++i) {
+        for (let i = 0; i < geometry.vertices.length / 3; ++i) {
             geometry.vertexColors.push(0, 0.4, 0, 0.5);
         }
         this.threeDLayer.add(cylinder);
@@ -236,7 +247,29 @@ export class Zones {
         }
 
         let cuboid = new AMap.Object3D.Mesh();
-        // TODO do mesh
+        let geometry = cuboid.geometry;
+        let height = cuboidZone.heightInMeter * this.mapProportion;
+        let verticesLength = cuboidZone.positions.length * 2;
+        cuboidZone.positions.forEach((position, i) => {
+            let coord = (this.map as any).lngLatToGeodeticCoord(position);
+            geometry.vertices.push(coord.x, coord.y, 0);
+            geometry.vertices.push(coord.x, coord.y, -height);
+
+            let bottomIndex = i * 2;
+            let topIndex = bottomIndex + 1;
+            let nextBottomIndex = (bottomIndex + 2) % verticesLength;
+            let nextTopIndex = (bottomIndex + 3) % verticesLength;
+
+            geometry.faces.push(bottomIndex, topIndex, nextTopIndex);
+            geometry.faces.push(bottomIndex, nextTopIndex, nextBottomIndex);
+        })
+        geometry.faces.push(3, 1, 7);
+        geometry.faces.push(5, 3, 7);
+        cuboid.transparent = true;
+        for (let i = 0; i < geometry.vertices.length / 3; ++i) {
+            geometry.vertexColors.push(0.8, 0.8, 0, 0.5);
+        }
+
         this.threeDLayer.add(cuboid);
 
         this.zones.get(cuboidZone.type)?.set(cuboidZone.id, cuboid);
@@ -301,9 +334,12 @@ export class Staffs {
 }
 
 export class Airplanes {
+    private mapProportion: number;
     private threeDLayer: AMap.Object3DLayer;
 
-    constructor(map: AMap.Map) {
+    constructor(map: AMap.Map, mapProportion: number) {
+        this.mapProportion = mapProportion;
+
         this.threeDLayer = new AMap.Object3DLayer();
         map.add(this.threeDLayer)
     }
@@ -315,7 +351,7 @@ export class Airplanes {
             gltfLoader.load(airplaneGltf, (airplaneModel: any) => {
                 airplaneModel.setOption({
                     position: airplane.position,
-                    height: airplane.height,
+                    height: airplane.heightInMeter * this.mapProportion,
                     scale: airplane.scale,
                 });
                 if (airplane.rotateX) {

@@ -2,7 +2,7 @@ import "@amap/amap-jsapi-types";
 
 export interface TrackLine {
     positions: AMap.LngLat[],
-    heights: number[],
+    heightsInMeter: number[],
 
     extraInfo: {
         type: string,
@@ -25,27 +25,25 @@ export interface DeviceClickedHandler {
     (event: any, device: Device): void;
 }
 
-export interface CylinderZone {
+export interface Zone {
     id: string,
     type: string,
+}
+
+export interface CylinderZone extends Zone {
     position: AMap.LngLat,
     radiusInMeter: number,
     heightInMeter: number,
 }
 
-export interface CuboidZone {
-    id: string,
-    type: string,
-    position: AMap.LngLat,
-    lengthInMeter: number,
-    widthInMeter: number,
+export interface CuboidZone extends Zone {
+    positions: [AMap.LngLat, AMap.LngLat, AMap.LngLat, AMap.LngLat],
     heightInMeter: number,
-    rotation: number,
 }
 
 export interface Airplane {
     position: AMap.LngLat,
-    height: number,
+    heightInMeter: number,
     scale: number,
     rotateX: number | null,
     rotateY: number | null,
