@@ -3,16 +3,16 @@ import type {
     TrackLine,
 } from "./interface";
 
-import hornUp from "@/assets/icons/horn/up.png"
-import hornDown from "@/assets/icons/horn/down.png"
-import cameraUp from "@/assets/icons/camera/up.png"
-import cameraDown from "@/assets/icons/camera/down.png"
-import radarUp from "@/assets/icons/radar/up.png"
-import radarDown from "@/assets/icons/radar/down.png"
-import unknownUp from "@/assets/icons/unknown/up.png"
-import worker from "@/assets/icons/worker/worker.png"
+import hornUp from "/icons/horn/up.png"
+import hornDown from "/icons/horn/down.png"
+import cameraUp from "/icons/camera/up.png"
+import cameraDown from "/icons/camera/down.png"
+import radarUp from "/icons/radar/up.png"
+import radarDown from "/icons/radar/down.png"
+import unknownUp from "/icons/unknown/up.png"
+import worker from "/icons/worker/worker.png"
 
-import airplaneGltf from "@/assets/models/airplane/model.gltf?url";
+import airplaneGltf from "/models/airplane/model.gltf?url";
 
 export class TrackLines {
     private mapProportion: number;
