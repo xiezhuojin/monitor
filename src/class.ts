@@ -67,7 +67,7 @@ export class TrackLines {
                 * this.mapProportion;
             let coord = (this.map as any).lngLatToGeodeticCoord(position);
             this.heads.geometry.vertices.push(coord.x, coord.y, -height);
-            if (trackLine.extraInfo.type == "鸟") {
+            if (trackLine.extraInfo.type == "bird") {
                 this.heads.geometry.vertexColors.push(0, 0, 1, 0.6);
             } else {
                 this.heads.geometry.vertexColors.push(1, 0, 0, 0.6);
@@ -332,19 +332,28 @@ export class Staffs {
 export class Airplanes {
     private mapProportion: number;
     private threeDLayer: AMap.Object3DLayer;
+    private airplanes: Array<any>;
 
     constructor(map: AMap.Map, mapProportion: number) {
         this.mapProportion = mapProportion;
 
         this.threeDLayer = new AMap.Object3DLayer();
+        this.airplanes = [];
         map.add(this.threeDLayer)
     }
 
     show(airplanes: Airplane[]) {
         this.threeDLayer.clear();
+
+        while (this.airplanes.length > airplanes.length) {
+            this.airplanes.pop()
+        }
+
         let gltfLoader = new AMap.GltfLoader();
-        airplanes.forEach((airplane) => {
-            gltfLoader.load(airplaneGltf, (airplaneModel: any) => {
+        airplanes.forEach((airplane, i) => {
+            if (i < this.airplanes.length) {
+                let airplaneModel = this.airplanes[i];
+                this.threeDLayer.add(airplaneModel);
                 airplaneModel.setOption({
                     position: airplane.position,
                     height: airplane.heightInMeter * this.mapProportion,
@@ -359,8 +368,26 @@ export class Airplanes {
                 if (airplane.rotateZ) {
                     airplaneModel.rotateZ(airplane.rotateZ);
                 }
-                this.threeDLayer.add(airplaneModel);
-            });
+            } else {
+                gltfLoader.load(airplaneGltf, (airplaneModel: any) => {
+                    this.airplanes.push(airplaneModel);
+                    this.threeDLayer.add(airplaneModel);
+                    airplaneModel.setOption({
+                        position: airplane.position,
+                        height: airplane.heightInMeter * this.mapProportion,
+                        scale: airplane.scale,
+                    });
+                    if (airplane.rotateX) {
+                        airplaneModel.rotateX(airplane.rotateX);
+                    }
+                    if (airplane.rotateY) {
+                        airplaneModel.rotateY(airplane.rotateY);
+                    }
+                    if (airplane.rotateZ) {
+                        airplaneModel.rotateZ(airplane.rotateZ);
+                    }
+                });
+            }
         })
     }
 }
