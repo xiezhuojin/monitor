@@ -13,16 +13,28 @@ export default ({
     MapView,
   },
 
+  setup() {
+    let channel: WebSocket | null = null;
+
+    return {
+      channel,
+    }
+  },
+
   methods: {
     start() {
-      const channel = new WebSocket("ws://localhost:9000");
-      channel.addEventListener("message", (event) => {
+      this.channel = new WebSocket("ws://localhost:9000");
+      this.channel.addEventListener("message", (event) => {
         eval(event.data);
       })
     },
 
     deviceClickedHandler(event: any, device: Device) {
-      console.log("clicked");
+      let message = {
+        "event": "deviceClicked",
+        "data": device,
+      }
+      this.channel.send(JSON.stringify(message));
     }
   },
 

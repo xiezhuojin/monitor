@@ -100,6 +100,10 @@ export class TrackLines {
             }
         });
     }
+
+    setMarkerVisibility(visibility: boolean) {
+        visibility? this.map.add(this.labelsLayer): this.map.remove(this.labelsLayer)
+    }
 }
 
 export class Devices {
@@ -165,7 +169,7 @@ export class Devices {
         let devices = this.devices.get(type);
         if (devices) {
             for (let marker of devices.values()) {
-                visibility ? marker.show() : marker.hide();
+                visibility ? this.map.add(marker) : this.map.remove(marker);
             }
         }
     }
@@ -188,7 +192,8 @@ export class Zones {
         this.zones = new Map();
     }
 
-    addCylinder(cylinderZone: CylinderZone) {
+    addCylinder(cylinderZone: CylinderZone, color: [number, number, number, number])
+    {
         if (!this.zones.has(cylinderZone.type)) {
             this.zones.set(cylinderZone.type, new Map());
         }
@@ -224,21 +229,21 @@ export class Zones {
         for (let i = 0; i < segment; ++i) {
             let bottomIndex = i * 2;
             let topIndex = bottomIndex + 1;
-            // let nextBottomIndex = (bottomIndex + 2) % verticesLength;
+            let nextBottomIndex = (bottomIndex + 2) % verticesLength;
             let nextTopIndex = (bottomIndex + 3) % verticesLength;
             geometry.faces.push(verticesLength + 1, nextTopIndex, topIndex);
             // geometry.faces.push(verticesLength, nextBottomIndex, bottomIndex);
         }
         cylinder.transparent = true;
         for (let i = 0; i < geometry.vertices.length / 3; ++i) {
-            geometry.vertexColors.push(0, 0.4, 0, 0.5);
+            geometry.vertexColors.push(...color);
         }
         this.threeDLayer.add(cylinder);
 
         this.zones.get(cylinderZone.type)?.set(cylinderZone.id, cylinder);
     }
 
-    addCuboid(cuboidZone: CuboidZone) {
+    addCuboid(cuboidZone: CuboidZone, color: [number, number, number, number]) {
         if (!this.zones.has(cuboidZone.type)) {
             this.zones.set(cuboidZone.type, new Map());
         }
@@ -267,7 +272,7 @@ export class Zones {
         geometry.faces.push(5, 3, 7);
         cuboid.transparent = true;
         for (let i = 0; i < geometry.vertices.length / 3; ++i) {
-            geometry.vertexColors.push(0.8, 0.8, 0, 0.5);
+            geometry.vertexColors.push(...color);
         }
 
         this.threeDLayer.add(cuboid);
@@ -275,19 +280,10 @@ export class Zones {
         this.zones.get(cuboidZone.type)?.set(cuboidZone.id, cuboid);
     }
 
-    toggleZonesVisibilityByTypesAndIds(
-        types: string[], ids: string[], visibility: boolean
-    ) {
-        this.zones.forEach((item, type) => {
-            item.forEach((zone, id) => {
-                if (types.includes(type) && ids.includes(id)) {
-                    if (visibility) {
-                        this.threeDLayer.add(zone);
-                    } else {
-                        this.threeDLayer.remove(zone);
-                    }
-                }
-            })
+    setVisibilityByTypes(type: string, visibility: boolean) {
+        let zones = this.zones.get(type);
+        zones?.forEach((zone) => {
+            visibility? this.threeDLayer.add(zone): this.threeDLayer.remove(zone);
         })
     }
 }
@@ -310,7 +306,7 @@ export class Staffs {
                 label: {
                     content: staff.extraInfo.name,
                     direction: "top",
-                    offset: new AMap.Pixel(0, -5),
+                    offset: new AMap.Pixel(0, -20),
                 }
             });
             this.map.add(marker);
@@ -326,9 +322,9 @@ export class Staffs {
         }
     }
 
-    toggleVisibility(visibility: boolean) {
+    setVisibility(visibility: boolean) {
         for (let staff of this.staffs.values()) {
-            visibility ? staff.show() : staff.hide();
+            visibility ? this.map.add(staff): this.map.remove(staff);
         }
     }
 }
