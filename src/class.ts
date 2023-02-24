@@ -109,13 +109,13 @@ export class TrackLines {
 export class Devices {
     private map: AMap.Map;
     private devices: Map<string, Map<string, AMap.Marker>>;
-    private deviceClickHandler: DeviceClickedHandler;
+    private deviceClickedHandler: DeviceClickedHandler;
 
-    constructor(map: AMap.Map, deviceClickHandler: DeviceClickedHandler) {
+    constructor(map: AMap.Map, deviceClickedHandler: DeviceClickedHandler) {
         this.map = map
         this.devices = new Map();
 
-        this.deviceClickHandler = deviceClickHandler;
+        this.deviceClickedHandler = deviceClickedHandler;
     }
 
     getDeviceIcon(device: Device) {
@@ -149,7 +149,7 @@ export class Devices {
             });
             this.map.add(marker);
             AMap.event.addListener(marker, "click", (event: any) => {
-                this.deviceClickHandler(event, device);
+                this.deviceClickedHandler(event, device);
             });
             this.devices.get(device.type)?.set(device.id, marker);
         } else {
